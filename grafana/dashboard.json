@@ -57,7 +57,7 @@
   "graphTooltip": 0,
   "id": null,
   "links": [],
-  "liveNow": false,
+  "liveNow": true,
   "panels": [
     {
       "datasource": {
@@ -361,6 +361,7 @@
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisGridShow": true,
+            "axisLabel": "",
             "axisPlacement": "left",
             "axisSoftMax": 28,
             "axisSoftMin": 19,
@@ -603,20 +604,25 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 38,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "2023-12-09T10:07:59.999Z",
-    "to": "2023-12-09T16:49:35.999Z"
+    "from": "now/d",
+    "to": "now/d"
   },
-  "timepicker": {},
-  "timezone": "",
+  "timepicker": {
+    "hidden": false,
+    "refresh_intervals": [
+      "5s"
+    ]
+  },
+  "timezone": "browser",
   "title": "Proofuino",
-  "uid": "e52d98b2-7658-4d46-820f-fb2f69a357c6",
-  "version": 4,
-  "weekStart": ""
+  "uid": "f5fb563b-7e16-4154-8992-8becfc58a690",
+  "version": 5,
+  "weekStart": "monday"
 }

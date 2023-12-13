@@ -12,7 +12,8 @@ enum State {
   HOLD_ON,
   HOLD_OFF,
   BOOST_ON,
-  BOOST_OFF
+  BOOST_OFF,
+  ERROR
 };
 
 class Temperatures {
@@ -164,6 +165,8 @@ String stateToString(State state) {
       return "BOOST_ON";
     case BOOST_OFF:
       return "BOOST_OFF";
+    case ERROR:
+      return "ERROR";
     default:
       return "UNKNOWN_STATE";  // Für den Fall, dass ein unbekannter Zustand übergeben wird
   }
@@ -178,14 +181,16 @@ Temperatures readTemperatures(int pin) {
 
   sensors.requestTemperatures();
 
-  float tempTDC = sensors.getTempCByIndex(1);
-  if (tempTDC != DEVICE_DISCONNECTED_C) {
-    TDC = tempTDC;
-  }
-
   float tempTAC = sensors.getTempCByIndex(0);
-  if (tempTAC != DEVICE_DISCONNECTED_C) {
+  float tempTDC = sensors.getTempCByIndex(1);
+  if (tempTAC != DEVICE_DISCONNECTED_C && tempTDC != DEVICE_DISCONNECTED_C) {
+    TDC = tempTDC;
     TAC = tempTAC;
+    if (currentState == ERROR) {
+      currentState = START;
+    }
+  } else {
+    currentState = ERROR;
   }
 
   return Temperatures(TAC, TDC);

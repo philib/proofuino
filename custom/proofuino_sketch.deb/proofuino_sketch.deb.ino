@@ -6,6 +6,7 @@
 #include <InfluxDbClient.h>
 #include <Adafruit_MQTT.h>
 #include <Adafruit_MQTT_Client.h>
+#include <ArduinoOTA.h>
 
 enum State {
   START,
@@ -41,11 +42,13 @@ const double OFFSET = 0.5;
 
 void setup() {
   Serial.begin(115200);
+  ArduinoOTA.begin();
   setupWifi();
   setupMqtt();
 }
 
 void loop() {
+  ArduinoOTA.handle();
   Temperatures temperatures = readTemperatures(D2);
   State newState = getState(currentState, temperatures.TAC, TAD, temperatures.TDC, TDD, OFFSET);
 

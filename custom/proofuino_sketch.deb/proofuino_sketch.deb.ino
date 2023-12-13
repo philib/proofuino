@@ -7,6 +7,7 @@
 #include <Adafruit_MQTT.h>
 #include <Adafruit_MQTT_Client.h>
 #include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
 
 enum State {
   START,
@@ -219,6 +220,7 @@ void setupWifi() {
   Serial.println("Connected to Wi-Fi!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+  MDNS.begin("proofuino");
 }
 
 void setupMqtt() {

@@ -8,6 +8,8 @@
 #include <Adafruit_MQTT_Client.h>
 #include <ArduinoOTA.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
+#include <LittleFS.h>
 
 enum State {
   START,
@@ -36,31 +38,37 @@ WiFiClient wifiClient;
 Adafruit_MQTT_Client mqtt(&wifiClient, "192.168.178.46", 1234);
 Adafruit_MQTT_Publish mqttPublish = Adafruit_MQTT_Publish(&mqtt, "cmnd/tasmota_417AA1/power");
 
+ESP8266WebServer server(80);
+
 const double TAD = 32.0;
 const double TDD = 26.0;
 State currentState = START;
 const double OFFSET = 0.5;
+Temperatures temperatures = Temperatures(0.0,0.0);
 
 void setup() {
   Serial.begin(115200);
   ArduinoOTA.begin();
   setupWifi();
   setupMqtt();
+  setupServer();
 }
 
 void loop() {
+  server.handleClient();
   ArduinoOTA.handle();
-  Temperatures temperatures = readTemperatures(D2);
-  State newState = getState(currentState, temperatures.TAC, TAD, temperatures.TDC, TDD, OFFSET);
+  executeEvery(10000, []() {
+    temperatures = readTemperatures(D2);
+    State newState = getState(currentState, temperatures.TAC, TAD, temperatures.TDC, TDD, OFFSET);
 
-  if (newState != currentState) {
-    sendMQTTMessage(newState);
-    writeStateToInfluxDB(newState);
-  }
-  writeTemperaturesToInfluxDB(temperatures.TAC, temperatures.TDC, newState);
+    if (newState != currentState) {
+      sendMQTTMessage(newState);
+      writeStateToInfluxDB(newState);
+    }
+    writeTemperaturesToInfluxDB(temperatures.TAC, temperatures.TDC, newState);
 
-  currentState = newState;
-  delay(10000);
+    currentState = newState;
+  });
 }
 
 // Funktion zur Bestimmung des nächsten Zustands basierend auf den gegebenen Parametern
@@ -99,15 +107,6 @@ State getState(State currentState, float TAC, float TAD, float TDC, float TDD, f
   return currentState;
 }
 
-// Curried function to include constants within the scope of getState
-auto withConstants(int TAD, int TDD, int OFFSET) {
-  return [=](State currentState, int ambient, int dough) {
-    State result = getState(currentState, ambient, TAD, dough, TDD, OFFSET);
-    Serial.println(result);
-    return result;
-  };
-}
-
 void sendMQTTMessage(State state) {
   if (!mqtt.connected()) {
     mqtt.disconnect();
@@ -140,12 +139,10 @@ void writeTemperaturesToInfluxDB(float TAC, float TDC, State state) {
 
   Point powerData("Power");
   if (state == BOOST_ON || state == HOLD_ON) {
-    Serial.println("ON");
     powerData.addField("value", 1);
     client.writePoint(powerData);
   } else {
     powerData.addField("value", 0);
-    Serial.println("OFF");
   }
   client.writePoint(powerData);
 }
@@ -223,6 +220,27 @@ void setupWifi() {
   MDNS.begin("proofuino");
 }
 
+void setupServer() {
+  if (!LittleFS.begin()) {
+    Serial.println("Failed to mount LittleFS");
+    return;
+  }
+  server.on("/", HTTP_GET, []() {
+    File file = LittleFS.open("/index.html", "r");
+    if (!file) {
+      Serial.println("Failed to open file");
+      server.send(404, "text/plain", "File not found");
+      return;
+    }
+    server.streamFile(file, "text/html");
+    file.close();
+  });
+  server.on("/temperature", HTTP_GET, []() {
+    server.send(200, "text/plain", String(temperatures.TAC));
+  });
+  server.begin();
+}
+
 void setupMqtt() {
   if (!mqtt.connected()) {
     mqtt.disconnect();
@@ -234,5 +252,20 @@ void setupMqtt() {
     Serial.println("Failed to connect to MQTT. Check server and credentials");
   } else {
     Serial.println("Connected to MQTT broker");
+  }
+}
+
+unsigned long previousMillis = 0;
+
+// Higher Order Function für zeitgesteuerte Ausführung
+void executeEvery(unsigned long interval, void (*function)()) {
+  unsigned long currentMillis = millis();
+
+  if (previousMillis == 0 || currentMillis - previousMillis >= interval) {
+    // Speichern der aktuellen Zeit für das nächste Intervall
+    previousMillis = currentMillis;
+
+    // Aufruf der übergebenen Funktion
+    (*function)();
   }
 }

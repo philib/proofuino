@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Temperature Sensor</title>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      function App() {
+        const [status, setStatus] = React.useState({
+          relay: "Loading...",
+          state: "Loading...",
+          ambient: "Loading...",
+          dough: "Loading...",
+        });
+        const [temperature, setTemperature] = React.useState("Loading...");
+        React.useEffect(() => {
+          const socket = new WebSocket("ws://proofuino.local:81");
+
+          socket.addEventListener("message", (event) => {
+            const data = JSON.parse(event.data)
+            setStatus({
+              relay: data.relay,
+              state: data.state,
+              ambient: data.temperature.tac,
+              dough: data.temperature.tdc,
+            });
+          });
+          // Connection error
+          socket.addEventListener("error", (event) => {
+            setStatus({
+              relay: "Error",
+              state: "Error",
+              ambient: "Error",
+              dough: "Error",
+            });
+          });
+          return () => socket.close();
+        }, []);
+
+        return React.createElement(
+          "div",
+          null,
+          React.createElement("h1", null, "Proofuino"),
+          React.createElement(
+            "div",
+            { className: "card", style: { width: "18rem" } },
+            React.createElement(
+              "div",
+              { className: "card-body" },
+              React.createElement(
+                "h5",
+                { className: "card-title", style: { paddingBottom: "20px" } },
+                "Status"
+              ),
+              React.createElement(
+                "p",
+                { className: "card-text" },
+                "State: ",
+                status.state
+              ),
+              React.createElement(
+                "p",
+                { className: "card-text" },
+                "Heatmat: ",
+                status.relay
+              ),
+              React.createElement(
+                "p",
+                { className: "card-text" },
+                "Ambient: ",
+                status.ambient
+              ),
+              React.createElement(
+                "p",
+                { className: "card-text" },
+                "Dough: ",
+                status.dough
+              )
+            )
+          )
+        );
+      }
+
+      ReactDOM.render(
+        React.createElement(App),
+        document.getElementById("root")
+      );
+    </script>
+  </body>
+</html>

@@ -7,6 +7,8 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <LittleFS.h>
+#include <WebSocketsServer.h>
+#include <ArduinoJson.h>
 
 enum State
 {
@@ -15,6 +17,7 @@ enum State
   HOLD_OFF,
   BOOST_ON,
   BOOST_OFF,
+  COOLDOWN,
   ERROR
 };
 
@@ -28,6 +31,8 @@ public:
       : TAC(tac), TDC(tdc) {}
 };
 
+const int RELAY_PIN = D1;
+
 OneWire oneWire;
 DallasTemperature sensors(&oneWire);
 
@@ -36,6 +41,7 @@ InfluxDBClient client("http://192.168.178.46:8086", "brot");
 WiFiClient wifiClient;
 
 ESP8266WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
 
 const double TAD = 32.0;
 const double TDD = 26.0;
@@ -46,11 +52,19 @@ Temperatures temperatures = Temperatures(0.0, 0.0);
 void setup()
 {
   Serial.begin(115200);
+
+  ArduinoOTA.onEnd([]() {
+    ESP.restart(); 
+  });
   ArduinoOTA.begin();
+
   setupWifi();
   setupServer();
-  // Relais
-  pinMode(D1, OUTPUT);
+  webSocket.begin();
+
+  pinMode(RELAY_PIN, OUTPUT);
+
+  writeStateToInfluxDB(currentState);
 }
 
 unsigned long previousMillis = 0;
@@ -70,26 +84,45 @@ void executeEvery(unsigned long interval, void (*function)())
   }
 }
 
+
+void turnRelayOff()
+{
+  digitalWrite(RELAY_PIN, LOW);
+}
+
+void turnRelayOn()
+{
+  digitalWrite(RELAY_PIN, HIGH);
+}
+
 void loop()
 {
   server.handleClient();
+  webSocket.loop();
   ArduinoOTA.handle();
-  executeEvery(10000, []()
-               {
+  executeEvery(10000, []() {
     temperatures = readTemperatures(D2);
     State newState = getState(currentState, temperatures.TAC, TAD, temperatures.TDC, TDD, OFFSET);
 
+    if(newState == ERROR){
+      turnRelayOff();
+      writeStateToInfluxDB(newState);
+      return;
+    }
+
     if (newState != currentState) {
       if (newState == HOLD_ON || newState == BOOST_ON) {
-        digitalWrite(D1, HIGH); // Turn the relay ON
+        turnRelayOn();
       } else {
-        digitalWrite(D1, LOW); // Turn the relay OFF
+        turnRelayOff();
       }
       writeStateToInfluxDB(newState);
     }
     writeTemperaturesToInfluxDB(temperatures.TAC, temperatures.TDC, newState);
+    sendWebsocket(newState, temperatures, digitalRead(RELAY_PIN));  
 
-    currentState = newState; });
+    currentState = newState; 
+  });
 }
 
 // Funktion zur Bestimmung des nächsten Zustands basierend auf den gegebenen Parametern
@@ -98,17 +131,28 @@ State getState(State currentState, float TAC, float TAD, float TDC, float TDD, f
   // Wenn der aktuelle Zustand "START" ist
   if (currentState == START)
   {
-    if (TDC < (TDD - Offset))
+    if (TDC >= (TDD + Offset))
+    {
+      return COOLDOWN;
+    }
+    else if (TDC < (TDD - Offset))
     {
       return BOOST_ON;
     }
-    else if (TDC >= (TDD - Offset) && TDC < TDD)
+    else if (TDC >= (TDD - Offset) && TDC <= TDD)
     {
       return HOLD_ON;
     }
-    else if (TDC >= (TDD - Offset) && TDC > TDD)
+    else if (TDC > TDD && TDC <= (TDD + Offset))
     {
       return HOLD_OFF;
+    }
+  }
+  else if (currentState == COOLDOWN)
+  {
+    if (TDC <= TDD)
+    {
+      return HOLD_ON;
     }
   }
   // Wenn der aktuelle Zustand "HOLD_ON" oder "HOLD_OFF" ist
@@ -177,6 +221,20 @@ void writeStateToInfluxDB(State state)
   client.writePoint(stateData);
 }
 
+void sendWebsocket(State state, Temperatures temperature, int relaisState){
+  // Create a JSON document
+  DynamicJsonDocument doc(1024);
+
+  // Populate the JSON document
+  doc["state"] = stateToString(state);
+  doc["temperature"]["tac"] = temperatures.TAC;
+  doc["temperature"]["tdc"] = temperatures.TDC;
+  doc["relay"] = digitalRead(RELAY_PIN) ? "ON" : "OFF";
+  String message;
+serializeJson(doc,message);
+  webSocket.broadcastTXT(message);
+}
+
 // Funktion zur Konvertierung des State Enums in einen String
 String stateToString(State state)
 {
@@ -192,6 +250,8 @@ String stateToString(State state)
     return "BOOST_ON";
   case BOOST_OFF:
     return "BOOST_OFF";
+  case COOLDOWN:
+    return "COOLDOWN";
   case ERROR:
     return "ERROR";
   default:

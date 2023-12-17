@@ -293,8 +293,11 @@ void setupWifi()
   // Create an instance of WiFiManager
   WiFiManager wifiManager;
 
-  // Uncomment the following line for debug output
-  // wifiManager.setDebugOutput(true);
+  // Set static IP for AP
+  IPAddress ip(192, 168, 0, 1);
+  IPAddress gateway(192, 168, 0, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  wifiManager.setAPStaticIPConfig(ip, gateway, subnet);
 
   // Try to connect to WiFi with saved credentials
   if (!wifiManager.autoConnect("ProofuinoAP"))

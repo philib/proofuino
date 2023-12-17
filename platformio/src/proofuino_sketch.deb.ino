@@ -29,6 +29,7 @@ public:
 const double TAD = 32.0;
 const double TDD = 26.0;
 const double OFFSET = 0.5;
+const double TDD_OFFSET = 0.5;
 
 class NewState;
 
@@ -55,20 +56,35 @@ public:
   virtual NewState* getNextState(Temperatures temperatures) = 0; // Pure virtual function
 };
 
+class StartState : public NewState {
+public:
+  StartState(Temperatures temperatures): NewState(
+    temperatures, nullptr, "START", OFF){}
+
+  NewState* getNextState(Temperatures temperatures) {
+    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+      return StateFactory::createCooldownState(temperatures, this);
+    } else if(temperatures.TDC < (TDD - TDD_OFFSET)){
+      return StateFactory::createBoostOnState(temperatures, this);
+    } else if(temperatures.TDC >= (TDD - TDD_OFFSET) && temperatures.TDC <= TDD){
+      return StateFactory::createHoldOnState(temperatures, this);
+    } else if(temperatures.TDC > TDD && temperatures.TDC <= (TDD + TDD_OFFSET)){
+      return StateFactory::createHoldOffState(temperatures, this);
+    }
+    return StateFactory::createErrorState(temperatures, this);
+  }
+};
+
 class CooldownState : public NewState {
 public:
   CooldownState(Temperatures temperatures, NewState* previousState): NewState(
     temperatures, previousState, "COOLDOWN", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    //if prevoius state is CooldownState
-    if((previousState->state == "START") || previousState->state == "COOLDOWN" || previousState->state == "BOOST_ON"){
-      if(temperatures.TDC <= TDD){
-        return StateFactory::createHoldOnState(temperatures, this);
-      }
-      return StateFactory::createCooldownState(temperatures, this);
+    if(temperatures.TDC <= TDD){
+      return StateFactory::createHoldOnState(temperatures, this);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    return StateFactory::createCooldownState(temperatures, this);
   }
 };
 
@@ -78,16 +94,16 @@ public:
     temperatures, previousState, "HOLD_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(previousState->state == "START" || previousState->state == "HOLD_ON" || previousState->state == "HOLD_OFF" || previousState->state == "COOLDOWN"){
-      if(temperatures.TDC >= (TDD + OFFSET)){
-        return StateFactory::createCooldownState(temperatures, this);
-      }
-      if(temperatures.TAC >= (TDD + OFFSET)){
-        return StateFactory::createHoldOffState(temperatures, this);
-      }
-      return StateFactory::createHoldOnState(temperatures, this);
+    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+      return StateFactory::createCooldownState(temperatures, this);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+      return StateFactory::createHoldOffState(temperatures, this);
+    }
+    if(temperatures.TAC >= (TDD + OFFSET)){
+      return StateFactory::createHoldOffState(temperatures, this);
+    }
+    return StateFactory::createHoldOnState(temperatures, this);
   }
 };
 
@@ -97,16 +113,16 @@ public:
     temperatures, previousState, "HOLD_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(previousState->state == "START" || previousState->state == "HOLD_OFF" || previousState->state == "HOLD_ON"){
-      if(temperatures.TAC <= (TDD - OFFSET)){
-        return StateFactory::createHoldOnState(temperatures, this);
-      }
-      if(temperatures.TDC < (TDD - OFFSET) - 1){
-        return StateFactory::createBoostOnState(temperatures, this);
-      }
-      return StateFactory::createHoldOffState(temperatures, this);
+    if(temperatures.TDC <= (TDD - TDD_OFFSET)){
+      return StateFactory::createHoldOnState(temperatures, this);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    if(temperatures.TAC <= (TDD - OFFSET)){
+      return StateFactory::createHoldOnState(temperatures, this);
+    }
+    if(temperatures.TDC < (TDD - TDD_OFFSET) - 1){
+      return StateFactory::createBoostOnState(temperatures, this);
+    }
+    return StateFactory::createHoldOffState(temperatures, this);
   }
 };
 
@@ -116,16 +132,13 @@ public:
     temperatures, previousState, "BOOST_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(previousState->state == "START" || previousState->state == "HOLD_OFF" || previousState->state == "BOOST_ON" || previousState->state == "BOOST_OFF"){
-      if(temperatures.TDC >= (TDD + OFFSET)){
-        return StateFactory::createCooldownState(temperatures, this);
-      }
-      if(temperatures.TAC >= (TAD + OFFSET)){
-        return StateFactory::createBoostOffState(temperatures, this);
-      }
-      return StateFactory::createBoostOnState(temperatures, this);
+    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+      return StateFactory::createCooldownState(temperatures, this);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    if(temperatures.TAC >= (TAD + OFFSET)){
+      return StateFactory::createBoostOffState(temperatures, this);
+    }
+    return StateFactory::createBoostOnState(temperatures, this);
   }
 };
 
@@ -135,13 +148,10 @@ public:
     temperatures, previousState, "BOOST_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(previousState->state == "BOOST_OFF" || previousState->state == "BOOST_ON"){
-      if(temperatures.TAC <= (TAD - OFFSET)){
-        return StateFactory::createBoostOnState(temperatures, this);
-      }
-      return StateFactory::createBoostOffState(temperatures, this);
+    if(temperatures.TAC <= (TAD - OFFSET)){
+      return StateFactory::createBoostOnState(temperatures, this);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    return StateFactory::createBoostOffState(temperatures, this);
   }
 };
 
@@ -153,25 +163,6 @@ public:
 
   NewState* getNextState(Temperatures temperatures) {
     return this;
-  }
-};
-
-class StartState : public NewState {
-public:
-  StartState(Temperatures temperatures): NewState(
-    temperatures, nullptr, "START", OFF){}
-
-  NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC >= (TDD + OFFSET)){
-      return StateFactory::createCooldownState(temperatures, this);
-    } else if(temperatures.TDC < (TDD - OFFSET)){
-      return StateFactory::createBoostOnState(temperatures, this);
-    } else if(temperatures.TDC >= (TDD - OFFSET) && temperatures.TDC <= TDD){
-      return StateFactory::createHoldOnState(temperatures, this);
-    } else if(temperatures.TDC > TDD && temperatures.TDC <= (TDD + OFFSET)){
-      return StateFactory::createHoldOffState(temperatures, this);
-    }
-    return StateFactory::createErrorState(temperatures, this);
   }
 };
 
@@ -233,7 +224,7 @@ void setup()
   pinMode(RELAY_PIN, OUTPUT);
 
   currentState = new StartState(Temperatures(0.0, 0.0));
-  writeStateToInfluxDB();
+  writeStateToInfluxDB(currentState);
 }
 
 unsigned long previousMillis = 0;
@@ -275,28 +266,30 @@ void loop()
   ArduinoOTA.handle();
 
   Temperatures temperatures = readTemperatures();
-  NewState* newState = currentState->getNextState(temperatures);
+  Relay relayState = getRelayState();
+  sendWebsocket(temperatures, relayState);  
 
-  sendWebsocket(newState);  
+  executeEvery(10000, []() {
 
-  if(newState->state == "ERROR"){
-    if (currentState->state != "ERROR" || getRelayState() == ON) {
-      turnRelayOff();
-      writeStateToInfluxDB();
+    Temperatures temperatures = readTemperatures();
+    NewState* newState = currentState->getNextState(temperatures);
+
+    if(newState->state == "ERROR"){
+      if (currentState->state != "ERROR" || getRelayState() == ON) {
+        turnRelayOff();
+        writeStateToInfluxDB(newState);
+      }
+      Serial.println("from " + currentState->state + " to " + newState->state);
+      currentState = newState;
+      return;
     }
-    Serial.println("from " + currentState->state + " to " + newState->state);
-    currentState = newState;
-    return;
-  }
-
-  executeEvery(10000, [&newState]() {
     if (newState->state != currentState->state) {
       if (newState->desiredRelayState == ON) {
         turnRelayOn();
       } else {
         turnRelayOff();
       }
-      writeStateToInfluxDB();
+      writeStateToInfluxDB(newState);
       Serial.println("from " + currentState->state + " to " + newState->state);
       currentState = newState; 
     }
@@ -324,22 +317,22 @@ void writeTemperaturesToInfluxDB()
   client.writePoint(powerData);
 }
 
-void writeStateToInfluxDB()
+void writeStateToInfluxDB(NewState* state)
 {
   Point stateData("State");
-  stateData.addField("state", getRelayState());
+  stateData.addField("state", state->state);
   client.writePoint(stateData);
 }
 
-void sendWebsocket(NewState* state){
+void sendWebsocket(Temperatures temperatures, Relay relayState){
   // Create a JSON document
   DynamicJsonDocument doc(1024);
 
   // Populate the JSON document
-  doc["state"] = state->state;
-  doc["temperature"]["tac"] = state->temperatures.TAC;
-  doc["temperature"]["tdc"] = state->temperatures.TDC;
-  doc["relay"] = state->desiredRelayState == ON ? "ON" : "OFF";
+  doc["state"] = currentState->getNextState(temperatures)->state;
+  doc["temperature"]["tac"] = temperatures.TAC;
+  doc["temperature"]["tdc"] = temperatures.TDC;
+  doc["relay"] = relayState == ON ? "ON" : "OFF";
   String message;
 serializeJson(doc,message);
   webSocket.broadcastTXT(message);

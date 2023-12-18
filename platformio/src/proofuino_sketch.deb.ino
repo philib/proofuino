@@ -313,7 +313,8 @@ void loop()
       writeStateToInfluxDB(newState);
       currentState = newState; 
     }
-    writeTemperaturesToInfluxDB();
+
+    writeTemperaturesToInfluxDB(newState);
 
     if(getRelayState() != currentState->desiredRelayState){
       currentState = new ErrorState(readTemperatures(), currentState, "Relay state does not match desired state");
@@ -322,12 +323,11 @@ void loop()
 
 }
 
-void writeTemperaturesToInfluxDB()
+void writeTemperaturesToInfluxDB(NewState* state)
 {
-  Temperatures sensorReadings = readTemperatures();
   Point sensorData("Sensor"); // Measurement name: Sensor
-  sensorData.addField("box", sensorReadings.TAC);   // Schreibe TAC in die Spalte "box"
-  sensorData.addField("bread", sensorReadings.TDC); // Schreibe TDC in die Spalte "bread"
+  sensorData.addField("box", state->temperatures.TAC);   // Schreibe TAC in die Spalte "box"
+  sensorData.addField("bread", state->temperatures.TDC); // Schreibe TDC in die Spalte "bread"
   client.writePoint(sensorData); // Datenpunkt in die InfluxDB schreiben
 
   Point powerData("Power");

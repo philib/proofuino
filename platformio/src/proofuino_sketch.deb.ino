@@ -62,14 +62,20 @@ public:
     temperatures, nullptr, "START", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+    if(temperatures.TDC > 26.2){
       return StateFactory::createCooldownState(temperatures, this);
-    } else if(temperatures.TDC < (TDD - TDD_OFFSET)){
-      return StateFactory::createBoostOnState(temperatures, this);
-    } else if(temperatures.TDC >= (TDD - TDD_OFFSET) && temperatures.TDC <= TDD){
-      return StateFactory::createHoldOnState(temperatures, this);
-    } else if(temperatures.TDC > TDD && temperatures.TDC <= (TDD + TDD_OFFSET)){
-      return StateFactory::createHoldOffState(temperatures, this);
+    } else if(temperatures.TDC < 25.8){
+      if(temperatures.TAC <= 32){
+        return StateFactory::createBoostOffState(temperatures, this);
+      } else {
+        return StateFactory::createBoostOnState(temperatures, this);
+      }
+    } else if(temperatures.TDC >= 25.8 && temperatures.TDC <= 26.2){
+      if(temperatures.TAC <= 25.8){
+        return StateFactory::createHoldOnState(temperatures, this);
+      } else {
+        return StateFactory::createHoldOffState(temperatures, this);
+      }
     }
     return StateFactory::createErrorState(temperatures, this);
   }
@@ -81,7 +87,15 @@ public:
     temperatures, previousState, "COOLDOWN", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC <= TDD){
+    //Cooldown Transistion
+    if(temperatures.TDC > 26.2){
+      return StateFactory::createCooldownState(temperatures, this);
+    }
+    //Boost On Transistion
+    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
+      return StateFactory::createBoostOnState(temperatures, this);
+    }
+    if(temperatures.TDC <= 26 && temperatures.TAC <= 25.8){
       return StateFactory::createHoldOnState(temperatures, this);
     }
     return StateFactory::createCooldownState(temperatures, this);
@@ -94,13 +108,15 @@ public:
     temperatures, previousState, "HOLD_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+    //Cooldown Transistion
+    if(temperatures.TDC > 26.2){
       return StateFactory::createCooldownState(temperatures, this);
     }
-    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
-      return StateFactory::createHoldOffState(temperatures, this);
+    //Boost On Transistion
+    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
+      return StateFactory::createBoostOnState(temperatures, this);
     }
-    if(temperatures.TAC >= (TDD + OFFSET)){
+    if(temperatures.TAC >= 26.2){
       return StateFactory::createHoldOffState(temperatures, this);
     }
     return StateFactory::createHoldOnState(temperatures, this);
@@ -113,14 +129,16 @@ public:
     temperatures, previousState, "HOLD_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC <= (TDD - TDD_OFFSET)){
-      return StateFactory::createHoldOnState(temperatures, this);
+    //Cooldown Transistion
+    if(temperatures.TDC > 26.2){
+      return StateFactory::createCooldownState(temperatures, this);
     }
-    if(temperatures.TAC <= (TDD - OFFSET)){
-      return StateFactory::createHoldOnState(temperatures, this);
-    }
-    if(temperatures.TDC < (TDD - TDD_OFFSET) - 1){
+    //Boost On Transistion
+    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
       return StateFactory::createBoostOnState(temperatures, this);
+    }
+    if(temperatures.TDC < 26 && temperatures.TAC < 25.8){
+      return StateFactory::createHoldOnState(temperatures, this);
     }
     return StateFactory::createHoldOffState(temperatures, this);
   }
@@ -132,10 +150,11 @@ public:
     temperatures, previousState, "BOOST_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TDC >= (TDD + TDD_OFFSET)){
+    //Cooldown Transistion
+    if(temperatures.TDC > 26.2){
       return StateFactory::createCooldownState(temperatures, this);
     }
-    if(temperatures.TAC >= (TAD + OFFSET)){
+    if(temperatures.TAC >= 32){
       return StateFactory::createBoostOffState(temperatures, this);
     }
     return StateFactory::createBoostOnState(temperatures, this);
@@ -148,7 +167,12 @@ public:
     temperatures, previousState, "BOOST_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    if(temperatures.TAC <= (TAD - OFFSET)){
+    //Cooldown Transistion
+    if(temperatures.TDC > 26.2){
+      return StateFactory::createCooldownState(temperatures, this);
+    }
+    //Boost On Transistion
+    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
       return StateFactory::createBoostOnState(temperatures, this);
     }
     return StateFactory::createBoostOffState(temperatures, this);

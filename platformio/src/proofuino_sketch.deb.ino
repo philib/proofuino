@@ -223,7 +223,7 @@ const int RELAY_PIN = D1;
 OneWire oneWire;
 DallasTemperature sensors(&oneWire);
 
-InfluxDBClient client("http://192.168.178.46:8086", "brot");
+InfluxDBClient client("http://192.168.178.47:8086", "brot");
 
 WiFiClient wifiClient;
 

@@ -385,16 +385,15 @@ Temperatures readTemperatures()
   return Temperatures(TAC, TDC);
 }
 
-void setupWifi()
-{
+void setupWifi() {
   // Create an instance of WiFiManager
   WiFiManager wifiManager;
-
-  // Uncomment the following line for debug output
-  // wifiManager.setDebugOutput(true);
+  // set timeout of autoConnect funtion. will return, no matter if connection is successful or not
+  wifiManager.setConfigPortalTimeout(1 * MINUTES);
 
   // Try to connect to WiFi with saved credentials
-  if (!wifiManager.autoConnect("ProofuinoAP")) {
+  bool connected = wifiManager.autoConnect("ProofuinoAP");
+  if (!connected) {
     Serial.println("Failed to connect and hit timeout");
     delay(3000);
     // Reset and try again or do whatever

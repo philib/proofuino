@@ -62,20 +62,17 @@ public:
     temperatures, nullptr, "START", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
+    //Cooldown Transistion
     if(temperatures.TDC > 26.2){
       return StateFactory::createCooldownState(temperatures, this);
-    } else if(temperatures.TDC < 25.8){
-      if(temperatures.TAC <= 32){
-        return StateFactory::createBoostOffState(temperatures, this);
-      } else {
-        return StateFactory::createBoostOnState(temperatures, this);
-      }
-    } else if(temperatures.TDC >= 25.8 && temperatures.TDC <= 26.2){
-      if(temperatures.TAC <= 25.8){
-        return StateFactory::createHoldOnState(temperatures, this);
-      } else {
-        return StateFactory::createHoldOffState(temperatures, this);
-      }
+    }
+    // Hold Off
+    if(temperatures.TDC >= 26 && temperatures.TDC <= 26.2){
+      return StateFactory::createHoldOffState(temperatures, this);
+    }
+    // Boost On
+    if(temperatures.TDC < 26){
+      return StateFactory::createBoostOnState(temperatures, this);
     }
     return StateFactory::createErrorState(temperatures, this);
   }
@@ -87,15 +84,7 @@ public:
     temperatures, previousState, "COOLDOWN", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
-    //Cooldown Transistion
-    if(temperatures.TDC > 26.2){
-      return StateFactory::createCooldownState(temperatures, this);
-    }
-    //Boost On Transistion
-    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
-      return StateFactory::createBoostOnState(temperatures, this);
-    }
-    if(temperatures.TDC <= 26 && temperatures.TAC <= 25.8){
+    if(temperatures.TDC < 26){
       return StateFactory::createHoldOnState(temperatures, this);
     }
     return StateFactory::createCooldownState(temperatures, this);
@@ -113,7 +102,7 @@ public:
       return StateFactory::createCooldownState(temperatures, this);
     }
     //Boost On Transistion
-    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
+    if(temperatures.TDC < 26){
       return StateFactory::createBoostOnState(temperatures, this);
     }
     if(temperatures.TAC >= 26.2){
@@ -134,10 +123,10 @@ public:
       return StateFactory::createCooldownState(temperatures, this);
     }
     //Boost On Transistion
-    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
+    if(temperatures.TDC < 26){
       return StateFactory::createBoostOnState(temperatures, this);
     }
-    if(temperatures.TDC < 26 && temperatures.TAC < 25.8){
+    if(temperatures.TAC <= 25.8){
       return StateFactory::createHoldOnState(temperatures, this);
     }
     return StateFactory::createHoldOffState(temperatures, this);
@@ -151,7 +140,8 @@ public:
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
-    if(temperatures.TDC > 26.2){
+    // due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
+    if(temperatures.TDC > 26){
       return StateFactory::createCooldownState(temperatures, this);
     }
     if(temperatures.TAC >= 32){
@@ -168,11 +158,12 @@ public:
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
-    if(temperatures.TDC > 26.2){
+    // due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
+    if(temperatures.TDC > 26){
       return StateFactory::createCooldownState(temperatures, this);
     }
     //Boost On Transistion
-    if(temperatures.TDC < 25.8 && temperatures.TAC < 25.8){
+    if(temperatures.TAC <= 28){
       return StateFactory::createBoostOnState(temperatures, this);
     }
     return StateFactory::createBoostOffState(temperatures, this);
@@ -268,14 +259,15 @@ void executeEvery(unsigned long interval, std::function<void()> function)
   }
 }
 
+unsigned long lastRelayOn = 0;
 
-void turnRelayOff()
-{
+void turnRelayOff() {
+  lastRelayOn = 0;
   digitalWrite(RELAY_PIN, LOW);
 }
 
-void turnRelayOn()
-{
+void turnRelayOn() {
+  lastRelayOn = millis();
   digitalWrite(RELAY_PIN, HIGH);
 }
 
@@ -283,27 +275,37 @@ Relay getRelayState() {
   return digitalRead(RELAY_PIN) == HIGH ? ON : OFF;
 }
 
+const int SECONDS = 1000;
+const int MINUTES = 60 * SECONDS;
+
 void loop()
 {
   server.handleClient();
   webSocket.loop();
   ArduinoOTA.handle();
 
+  // #### Saftey NET ####
   Temperatures temperatures = readTemperatures();
+  if(temperatures.TAC > 38){
+    currentState = new ErrorState(temperatures, currentState, "Safety shutdown");
+  }
   Relay relayState = getRelayState();
+  if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
+    currentState = new ErrorState(temperatures, currentState, "Safety shutdown");
+  }
+
   sendWebsocket(temperatures, relayState);  
 
-  executeEvery(10000, []() {
+  executeEvery(10 * SECONDS, []() {
 
     Temperatures temperatures = readTemperatures();
     NewState* newState = currentState->getNextState(temperatures);
 
     if(newState->state == "ERROR"){
-      if (currentState->state != "ERROR" || getRelayState() == ON) {
-        turnRelayOff();
+      turnRelayOff();
+      if (currentState->state != "ERROR") {
         writeStateToInfluxDB(newState);
       }
-      Serial.println("from " + currentState->state + " to " + newState->state);
       currentState = newState;
       return;
     }
@@ -314,13 +316,11 @@ void loop()
         turnRelayOff();
       }
       writeStateToInfluxDB(newState);
-      Serial.println("from " + currentState->state + " to " + newState->state);
       currentState = newState; 
     }
     writeTemperaturesToInfluxDB();
 
     if(getRelayState() != currentState->desiredRelayState){
-      Serial.println("Relay state does not match desired state");
       currentState = new ErrorState(readTemperatures(), currentState, "Relay state does not match desired state");
     }
   });
@@ -394,8 +394,7 @@ void setupWifi()
   // wifiManager.setDebugOutput(true);
 
   // Try to connect to WiFi with saved credentials
-  if (!wifiManager.autoConnect("ProofuinoAP"))
-  {
+  if (!wifiManager.autoConnect("ProofuinoAP")) {
     Serial.println("Failed to connect and hit timeout");
     delay(3000);
     // Reset and try again or do whatever

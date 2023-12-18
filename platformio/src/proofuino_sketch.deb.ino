@@ -223,15 +223,10 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 
 NewState* currentState;
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
 
-  ArduinoOTA.onEnd([]() {
-    ESP.restart(); 
-  });
-  ArduinoOTA.begin();
-
+  setupOTA();
   setupWifi();
   setupServer();
   webSocket.begin();
@@ -383,6 +378,13 @@ Temperatures readTemperatures()
   }
 
   return Temperatures(TAC, TDC);
+}
+
+void setupOTA() {
+  ArduinoOTA.onEnd([]() {
+    ESP.restart();
+  });
+  ArduinoOTA.begin();
 }
 
 void setupWifi() {

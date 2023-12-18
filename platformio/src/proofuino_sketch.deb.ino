@@ -311,10 +311,10 @@ void loop()
         turnRelayOff();
       }
       writeStateToInfluxDB(newState);
-      currentState = newState; 
     }
 
     writeTemperaturesToInfluxDB(newState);
+    currentState = newState;
 
     if(getRelayState() != currentState->desiredRelayState){
       currentState = new ErrorState(readTemperatures(), currentState, "Relay state does not match desired state");

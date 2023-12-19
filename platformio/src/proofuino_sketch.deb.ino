@@ -269,7 +269,15 @@ Relay getRelayState() {
 
 void updateState(NewState* newState){
   if(currentState == nullptr || newState->state != currentState->state){
+    if(currentState == nullptr){
+      Serial.println("Starting");
+    } else {
+      Serial.println("From: " + currentState->state + " To: " + newState->state);
+    }
     writeStateToInfluxDB(newState);
+  }
+  if(currentState != nullptr){
+    delete currentState;
   }
   currentState = newState;
 }
@@ -299,22 +307,19 @@ void loop()
 
   executeEvery(10 * SECONDS, []() {
 
-    Temperatures temperatures = readTemperatures();
-    NewState* newState = currentState->getNextState(temperatures);
+    updateState(currentState->getNextState(readTemperatures()));
 
-    updateState(newState);
-
-    if(newState->state == "ERROR"){
+    if(currentState->state == "ERROR"){
       turnRelayOff();
       return;
     }
-    if (newState->desiredRelayState == ON) {
+    if (currentState->desiredRelayState == ON) {
       turnRelayOn();
     } else {
       turnRelayOff();
     }
 
-    writeTemperaturesToInfluxDB(newState);
+    writeTemperaturesToInfluxDB(currentState);
 
     if(getRelayState() != currentState->desiredRelayState){
       updateState(new ErrorState(readTemperatures()));
@@ -325,6 +330,7 @@ void loop()
 }
 
 void writeError(String reason){
+  Serial.println("Error: " + reason);
   Point errorData("Error");
   errorData.addField("reason", reason);
   client.writePoint(errorData);

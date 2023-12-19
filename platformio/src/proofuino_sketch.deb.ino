@@ -304,7 +304,7 @@ void loop()
     writeError("Relay on for too long");
   }
 
-  sendWebsocket(temperatures, relayState);  
+  // sendWebsocket(temperatures, relayState);  
 
   executeEvery(10 * SECONDS, []() {
 

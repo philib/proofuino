@@ -287,10 +287,12 @@ void loop()
   Temperatures temperatures = readTemperatures();
   if(temperatures.TAC > 38){
     updateState(new ErrorState(temperatures));
+    writeError("Temperature too high");
   }
   Relay relayState = getRelayState();
   if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
     updateState(new ErrorState(temperatures));
+    writeError("Relay on for too long");
   }
 
   sendWebsocket(temperatures, relayState);  
@@ -316,9 +318,16 @@ void loop()
 
     if(getRelayState() != currentState->desiredRelayState){
       updateState(new ErrorState(readTemperatures()));
+      writeError("Relay state does not match desired state");
     }
   });
 
+}
+
+void writeError(String reason){
+  Point errorData("Error");
+  errorData.addField("reason", reason);
+  client.writePoint(errorData);
 }
 
 void writeTemperaturesToInfluxDB(NewState* state)
@@ -373,6 +382,7 @@ Temperatures readTemperatures()
   }
   else {
     updateState(new ErrorState(Temperatures(DEVICE_DISCONNECTED_C, DEVICE_DISCONNECTED_C)));
+    writeError("Temperature sensor disconnected");
   }
 
   return Temperatures(TAC, TDC);

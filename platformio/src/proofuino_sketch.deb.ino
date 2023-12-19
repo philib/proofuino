@@ -36,22 +36,21 @@ class NewState;
 class StateFactory {
 public:
   static NewState* createStartState(Temperatures temperatures);
-  static NewState* createCooldownState(Temperatures temperatures, NewState* previousState);
-  static NewState* createHoldOnState(Temperatures temperatures, NewState* previousState);
-  static NewState* createHoldOffState(Temperatures temperatures, NewState* previousState);
-  static NewState* createBoostOnState(Temperatures temperatures, NewState* previousState);
-  static NewState* createBoostOffState(Temperatures temperatures, NewState* previousState);
-  static NewState* createErrorState(Temperatures temperatures, NewState* previousState, String reason = "");
+  static NewState* createCooldownState(Temperatures temperatures);
+  static NewState* createHoldOnState(Temperatures temperatures);
+  static NewState* createHoldOffState(Temperatures temperatures);
+  static NewState* createBoostOnState(Temperatures temperatures);
+  static NewState* createBoostOffState(Temperatures temperatures);
+  static NewState* createErrorState(Temperatures temperatures);
 };
 
 class NewState {
 public:
   Temperatures temperatures;
   Relay desiredRelayState;
-  NewState* previousState;
   String state;
-  NewState(Temperatures temperatures, NewState* previousState, String state, Relay desiredRelayState)
-    : temperatures(temperatures), desiredRelayState(desiredRelayState), previousState(previousState), state(state) {}
+  NewState(Temperatures temperatures, String state, Relay desiredRelayState)
+    : temperatures(temperatures), desiredRelayState(desiredRelayState), state(state) {}
 
   virtual NewState* getNextState(Temperatures temperatures) = 0; // Pure virtual function
 };
@@ -59,122 +58,121 @@ public:
 class StartState : public NewState {
 public:
   StartState(Temperatures temperatures): NewState(
-    temperatures, nullptr, "START", OFF){}
+    temperatures, "START", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
     if(temperatures.TDC > 26.2){
-      return StateFactory::createCooldownState(temperatures, this);
+      return StateFactory::createCooldownState(temperatures);
     }
     // Hold Off
     if(temperatures.TDC >= 26 && temperatures.TDC <= 26.2){
-      return StateFactory::createHoldOffState(temperatures, this);
+      return StateFactory::createHoldOffState(temperatures);
     }
     // Boost On
     if(temperatures.TDC < 26){
-      return StateFactory::createBoostOnState(temperatures, this);
+      return StateFactory::createBoostOnState(temperatures);
     }
-    return StateFactory::createErrorState(temperatures, this);
+    return StateFactory::createErrorState(temperatures);
   }
 };
 
 class CooldownState : public NewState {
 public:
-  CooldownState(Temperatures temperatures, NewState* previousState): NewState(
-    temperatures, previousState, "COOLDOWN", OFF){}
+  CooldownState(Temperatures temperatures): NewState(
+    temperatures, "COOLDOWN", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
     if(temperatures.TDC < 26){
-      return StateFactory::createHoldOnState(temperatures, this);
+      return StateFactory::createHoldOnState(temperatures);
     }
-    return StateFactory::createCooldownState(temperatures, this);
+    return StateFactory::createCooldownState(temperatures);
   }
 };
 
 class HoldOnState : public NewState {
 public:
-  HoldOnState(Temperatures temperatures, NewState* previousState): NewState(
-    temperatures, previousState, "HOLD_ON", ON){}
+  HoldOnState(Temperatures temperatures): NewState(
+    temperatures, "HOLD_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
     if(temperatures.TDC > 26.2){
-      return StateFactory::createCooldownState(temperatures, this);
+      return StateFactory::createCooldownState(temperatures);
     }
     //Boost On Transistion
     if(temperatures.TDC < 26){
-      return StateFactory::createBoostOnState(temperatures, this);
+      return StateFactory::createBoostOnState(temperatures);
     }
     if(temperatures.TAC >= 26.2){
-      return StateFactory::createHoldOffState(temperatures, this);
+      return StateFactory::createHoldOffState(temperatures);
     }
-    return StateFactory::createHoldOnState(temperatures, this);
+    return StateFactory::createHoldOnState(temperatures);
   }
 };
 
 class HoldOffState : public NewState {
 public:
-  HoldOffState(Temperatures temperatures, NewState* previousState): NewState(
-    temperatures, previousState, "HOLD_OFF", OFF){}
+  HoldOffState(Temperatures temperatures): NewState(
+    temperatures, "HOLD_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
     if(temperatures.TDC > 26.2){
-      return StateFactory::createCooldownState(temperatures, this);
+      return StateFactory::createCooldownState(temperatures);
     }
     //Boost On Transistion
     if(temperatures.TDC < 26){
-      return StateFactory::createBoostOnState(temperatures, this);
+      return StateFactory::createBoostOnState(temperatures);
     }
     if(temperatures.TAC <= 25.8){
-      return StateFactory::createHoldOnState(temperatures, this);
+      return StateFactory::createHoldOnState(temperatures);
     }
-    return StateFactory::createHoldOffState(temperatures, this);
+    return StateFactory::createHoldOffState(temperatures);
   }
 };
 
 class BoostOnState : public NewState {
 public:
-  BoostOnState(Temperatures temperatures, NewState* previousState): NewState(
-    temperatures, previousState, "BOOST_ON", ON){}
+  BoostOnState(Temperatures temperatures): NewState(
+    temperatures, "BOOST_ON", ON){}
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
     // due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
     if(temperatures.TDC > 26){
-      return StateFactory::createCooldownState(temperatures, this);
+      return StateFactory::createCooldownState(temperatures);
     }
     if(temperatures.TAC >= 32){
-      return StateFactory::createBoostOffState(temperatures, this);
+      return StateFactory::createBoostOffState(temperatures);
     }
-    return StateFactory::createBoostOnState(temperatures, this);
+    return StateFactory::createBoostOnState(temperatures);
   }
 };
 
 class BoostOffState : public NewState {
 public:
-  BoostOffState(Temperatures temperatures, NewState* previousState): NewState(
-    temperatures, previousState, "BOOST_OFF", OFF){}
+  BoostOffState(Temperatures temperatures): NewState(
+    temperatures, "BOOST_OFF", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
     //Cooldown Transistion
     // due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
     if(temperatures.TDC > 26){
-      return StateFactory::createCooldownState(temperatures, this);
+      return StateFactory::createCooldownState(temperatures);
     }
     //Boost On Transistion
     if(temperatures.TAC <= 28){
-      return StateFactory::createBoostOnState(temperatures, this);
+      return StateFactory::createBoostOnState(temperatures);
     }
-    return StateFactory::createBoostOffState(temperatures, this);
+    return StateFactory::createBoostOffState(temperatures);
   }
 };
 
 class ErrorState : public NewState {
 public:
-  String reason;
-  ErrorState(Temperatures temperatures, NewState* previousState, String reason = ""): NewState(
-    temperatures, previousState, "ERROR", OFF){}
+  ErrorState(Temperatures temperatures): NewState(
+    temperatures, "ERROR", OFF){}
 
   NewState* getNextState(Temperatures temperatures) {
     return this;
@@ -185,28 +183,28 @@ NewState* StateFactory::createStartState(Temperatures temperatures) {
   return new StartState(temperatures);
 }
 
-NewState* StateFactory::createCooldownState(Temperatures temperatures, NewState* previousState) {
-  return new CooldownState(temperatures, previousState);
+NewState* StateFactory::createCooldownState(Temperatures temperatures) {
+  return new CooldownState(temperatures);
 }
 
-NewState* StateFactory::createHoldOnState(Temperatures temperatures, NewState* previousState) {
-  return new HoldOnState(temperatures, previousState);
+NewState* StateFactory::createHoldOnState(Temperatures temperatures) {
+  return new HoldOnState(temperatures);
 }
 
-NewState* StateFactory::createHoldOffState(Temperatures temperatures, NewState* previousState) {
-  return new HoldOffState(temperatures, previousState);
+NewState* StateFactory::createHoldOffState(Temperatures temperatures) {
+  return new HoldOffState(temperatures);
 }
 
-NewState* StateFactory::createBoostOnState(Temperatures temperatures, NewState* previousState) {
-  return new BoostOnState(temperatures, previousState);
+NewState* StateFactory::createBoostOnState(Temperatures temperatures) {
+  return new BoostOnState(temperatures);
 }
 
-NewState* StateFactory::createBoostOffState(Temperatures temperatures, NewState* previousState) {
-  return new BoostOffState(temperatures, previousState);
+NewState* StateFactory::createBoostOffState(Temperatures temperatures) {
+  return new BoostOffState(temperatures);
 }
 
-NewState* StateFactory::createErrorState(Temperatures temperatures, NewState* previousState, String reason) {
-  return new ErrorState(temperatures, previousState, reason);
+NewState* StateFactory::createErrorState(Temperatures temperatures) {
+  return new ErrorState(temperatures);
 }
 
 const int RELAY_PIN = D1;
@@ -282,11 +280,11 @@ void loop()
   // #### Saftey NET ####
   Temperatures temperatures = readTemperatures();
   if(temperatures.TAC > 38){
-    currentState = new ErrorState(temperatures, currentState, "Safety shutdown");
+    currentState = new ErrorState(temperatures);
   }
   Relay relayState = getRelayState();
   if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
-    currentState = new ErrorState(temperatures, currentState, "Safety shutdown");
+    currentState = new ErrorState(temperatures);
   }
 
   sendWebsocket(temperatures, relayState);  
@@ -317,7 +315,7 @@ void loop()
     currentState = newState;
 
     if(getRelayState() != currentState->desiredRelayState){
-      currentState = new ErrorState(readTemperatures(), currentState, "Relay state does not match desired state");
+      currentState = new ErrorState(readTemperatures());
     }
   });
 
@@ -374,7 +372,7 @@ Temperatures readTemperatures()
     TAC = tempTAC;
   }
   else {
-    currentState = new ErrorState(Temperatures(DEVICE_DISCONNECTED_C, DEVICE_DISCONNECTED_C), currentState, "Temperature sensor disconnected");
+    currentState = new ErrorState(Temperatures(DEVICE_DISCONNECTED_C, DEVICE_DISCONNECTED_C));
   }
 
   return Temperatures(TAC, TDC);

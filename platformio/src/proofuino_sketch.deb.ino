@@ -231,8 +231,7 @@ void setup() {
 
   pinMode(RELAY_PIN, OUTPUT);
 
-  currentState = new StartState(Temperatures(0.0, 0.0));
-  writeStateToInfluxDB(currentState);
+  updateState(new StartState(Temperatures(0.0, 0.0)));
 }
 
 unsigned long previousMillis = 0;
@@ -268,6 +267,13 @@ Relay getRelayState() {
   return digitalRead(RELAY_PIN) == HIGH ? ON : OFF;
 }
 
+void updateState(NewState* newState){
+  if(currentState == nullptr || newState->state != currentState->state){
+    writeStateToInfluxDB(newState);
+  }
+  currentState = newState;
+}
+
 const int SECONDS = 1000;
 const int MINUTES = 60 * SECONDS;
 
@@ -280,11 +286,11 @@ void loop()
   // #### Saftey NET ####
   Temperatures temperatures = readTemperatures();
   if(temperatures.TAC > 38){
-    currentState = new ErrorState(temperatures);
+    updateState(new ErrorState(temperatures));
   }
   Relay relayState = getRelayState();
   if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
-    currentState = new ErrorState(temperatures);
+    updateState(new ErrorState(temperatures));
   }
 
   sendWebsocket(temperatures, relayState);  
@@ -294,28 +300,22 @@ void loop()
     Temperatures temperatures = readTemperatures();
     NewState* newState = currentState->getNextState(temperatures);
 
+    updateState(newState);
+
     if(newState->state == "ERROR"){
       turnRelayOff();
-      if (currentState->state != "ERROR") {
-        writeStateToInfluxDB(newState);
-      }
-      currentState = newState;
       return;
     }
-    if (newState->state != currentState->state) {
-      if (newState->desiredRelayState == ON) {
-        turnRelayOn();
-      } else {
-        turnRelayOff();
-      }
-      writeStateToInfluxDB(newState);
+    if (newState->desiredRelayState == ON) {
+      turnRelayOn();
+    } else {
+      turnRelayOff();
     }
 
     writeTemperaturesToInfluxDB(newState);
-    currentState = newState;
 
     if(getRelayState() != currentState->desiredRelayState){
-      currentState = new ErrorState(readTemperatures());
+      updateState(new ErrorState(readTemperatures()));
     }
   });
 
@@ -372,7 +372,7 @@ Temperatures readTemperatures()
     TAC = tempTAC;
   }
   else {
-    currentState = new ErrorState(Temperatures(DEVICE_DISCONNECTED_C, DEVICE_DISCONNECTED_C));
+    updateState(new ErrorState(Temperatures(DEVICE_DISCONNECTED_C, DEVICE_DISCONNECTED_C)));
   }
 
   return Temperatures(TAC, TDC);

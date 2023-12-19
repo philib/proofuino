@@ -49,6 +49,7 @@ public:
   Temperatures temperatures;
   Relay desiredRelayState;
   String state;
+  virtual ~NewState() {}  // Virtual destructor
   NewState(Temperatures temperatures, String state, Relay desiredRelayState)
     : temperatures(temperatures), desiredRelayState(desiredRelayState), state(state) {}
 

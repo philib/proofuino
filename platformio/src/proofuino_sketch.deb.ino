@@ -24,11 +24,6 @@ public:
       : TAC(tac), TDC(tdc) {}
 };
 
-const double TAD = 32.0;
-const double TDD = 26.0;
-const double OFFSET = 0.5;
-const double TDD_OFFSET = 0.5;
-
 class State;
 
 class StateFactory

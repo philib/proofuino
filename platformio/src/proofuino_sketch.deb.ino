@@ -7,11 +7,9 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <LittleFS.h>
-#include <WebSocketsServer.h>
-#include <ArduinoJson.h>
 
-
-enum Relay {
+enum Relay
+{
   ON,
   OFF
 };
@@ -218,7 +216,6 @@ InfluxDBClient client("http://192.168.178.47:8086", "brot");
 WiFiClient wifiClient;
 
 ESP8266WebServer server(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
 
 NewState* currentState;
 WiFiManager wifiManager;
@@ -287,10 +284,8 @@ void loop()
   wifiManager.process();
   onConnection([]() {
     ArduinoOTA.handle();
-    webSocket.loop();
     server.handleClient(); 
   });
-
 
   executeEvery(10 * SECONDS, []() {
     // #### Saftey NET ####
@@ -360,20 +355,6 @@ void writeStateToInfluxDB(NewState* state)
   });
 }
 
-void sendWebsocket(Temperatures temperatures, Relay relayState){
-  // Create a JSON document
-  DynamicJsonDocument doc(1024);
-
-  // Populate the JSON document
-  doc["state"] = currentState->getNextState(temperatures)->state;
-  doc["temperature"]["tac"] = temperatures.TAC;
-  doc["temperature"]["tdc"] = temperatures.TDC;
-  doc["relay"] = relayState == ON ? "ON" : "OFF";
-  String message;
-serializeJson(doc,message);
-  webSocket.broadcastTXT(message);
-}
-
 Temperatures readTemperatures()
 {
   oneWire.begin(D2);
@@ -441,7 +422,6 @@ void setup() {
   setupOTA();
   setupWifi();
   setupServer();
-  webSocket.begin();
 
   pinMode(RELAY_PIN, OUTPUT);
 

@@ -287,7 +287,10 @@ void turnRelayOff()
 
 void turnRelayOn()
 {
-  lastRelayOn = millis();
+  if (getRelayState() == OFF)
+  {
+    lastRelayOn = millis();
+  }
   digitalWrite(RELAY_PIN, HIGH);
 }
 
@@ -330,17 +333,14 @@ void loop()
 
   executeEvery(10 * SECONDS, []()
                {
-    // #### Saftey NET ####
     Temperatures temperatures = readTemperatures();
-    if(temperatures.TAC > 38){
-      updateState(new ErrorState(temperatures));
-      writeError("Temperature too high");
-      return;
-    }
     Relay relayState = getRelayState();
-    if(relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
+
+    bool isTemperatureToHigh = temperatures.TAC > 38;
+    bool isRelayOnForTooLong = relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES;
+    if(isTemperatureToHigh || isRelayOnForTooLong){
       updateState(new ErrorState(temperatures));
-      writeError("Relay on for too long");
+      isTemperatureToHigh ? writeError("Temperature too high") : writeError("Relay on for too long");
       return;
     }
 

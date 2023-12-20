@@ -221,19 +221,7 @@ ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 NewState* currentState;
-
-void setup() {
-  Serial.begin(115200);
-
-  setupOTA();
-  setupWifi();
-  setupServer();
-  webSocket.begin();
-
-  pinMode(RELAY_PIN, OUTPUT);
-
-  updateState(new StartState(Temperatures(0.0, 0.0)));
-}
+WiFiManager wifiManager;
 
 unsigned long previousMillis = 0;
 
@@ -257,10 +245,6 @@ void onConnection(std::function<void()> function)
   if (WiFi.status() == WL_CONNECTED)
   {
     function();
-  }
-  else
-  {
-    Serial.println("Not connected to WiFi");
   }
 }
 
@@ -300,11 +284,12 @@ const int MINUTES = 60 * SECONDS;
 
 void loop()
 {
-  onConnection([]()
-               {
+  wifiManager.process();
+  onConnection([]() {
     ArduinoOTA.handle();
     webSocket.loop();
-    server.handleClient(); });
+    server.handleClient(); 
+  });
 
 
   executeEvery(10 * SECONDS, []() {
@@ -315,13 +300,15 @@ void loop()
       writeError("Temperature too high");
       return;
     }
-    if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
+    Relay relayState = getRelayState();
+    if(relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
       updateState(new ErrorState(temperatures));
       writeError("Relay on for too long");
       return;
     }
 
     updateState(currentState->getNextState(temperatures));
+    Serial.println("State: " + currentState->state + " | Relay: " + (relayState == ON ? "ON" : "OFF") + " | TAC: " + temperatures.TAC + " | TDC: " + temperatures.TDC);
 
     if(currentState->state == "ERROR"){
       turnRelayOff();
@@ -334,11 +321,6 @@ void loop()
     }
 
     writeTemperaturesToInfluxDB(currentState);
-
-    if(getRelayState() != currentState->desiredRelayState){
-      updateState(new ErrorState(readTemperatures()));
-      writeError("Relay state does not match desired state");
-    }
   });
 
 }
@@ -357,7 +339,6 @@ void writeError(String reason){
 void writeTemperaturesToInfluxDB(NewState* state)
 {
   onConnection([&state]() {
-
     Point sensorData("Sensor");                            // Measurement name: Sensor
     sensorData.addField("box", state->temperatures.TAC);   // Schreibe TAC in die Spalte "box"
     sensorData.addField("bread", state->temperatures.TDC); // Schreibe TDC in die Spalte "bread"
@@ -367,18 +348,15 @@ void writeTemperaturesToInfluxDB(NewState* state)
     powerData.addField("value", getRelayState() == ON ? 1 : 0);
     client.writePoint(powerData);
     client.writePoint(powerData); 
-    
   });
 }
 
 void writeStateToInfluxDB(NewState* state)
 {
   onConnection([&state]() {
-
     Point stateData("State");
     stateData.addField("state", state->state);
     client.writePoint(stateData);
-
   });
 }
 
@@ -428,25 +406,10 @@ void setupOTA() {
 }
 
 void setupWifi() {
-  // Create an instance of WiFiManager
-  WiFiManager wifiManager;
-  // set timeout of autoConnect funtion. will return, no matter if connection is successful or not
-  wifiManager.setConfigPortalTimeout(1 * MINUTES);
-
-  // Try to connect to WiFi with saved credentials
-  bool connected = wifiManager.autoConnect("ProofuinoAP");
-  if (!connected) {
-    Serial.println("Failed to connect and hit timeout");
-    delay(3000);
-    // Reset and try again or do whatever
-    ESP.reset();
-    delay(5000);
-  }
-
-  // If connected, display network information
-  Serial.println("Connected to Wi-Fi!");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
+  // wifiManager.resetSettings(); // for debugging
+  wifiManager.setConfigPortalBlocking(false);
+  wifiManager.setConfigPortalTimeout(60);
+  wifiManager.autoConnect("ProofuinoAP");
   MDNS.begin("proofuino");
 }
 
@@ -470,4 +433,17 @@ void setupServer()
   server.on("/temperature", HTTP_GET, []()
             { server.send(200, "text/plain", String(currentState->temperatures.TAC)); });
   server.begin();
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  setupOTA();
+  setupWifi();
+  setupServer();
+  webSocket.begin();
+
+  pinMode(RELAY_PIN, OUTPUT);
+
+  updateState(new StartState(Temperatures(0.0, 0.0)));
 }

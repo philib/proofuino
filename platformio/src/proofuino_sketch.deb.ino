@@ -1,3 +1,4 @@
+#include "config.h"
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include <OneWire.h>
@@ -243,7 +244,7 @@ const int RELAY_PIN = D1;
 OneWire oneWire;
 DallasTemperature sensors(&oneWire);
 
-InfluxDBClient client("http://192.168.178.47:8086", "brot");
+InfluxDBClient client(INFLUXDB_URL, DATABASE);
 
 WiFiClient wifiClient;
 

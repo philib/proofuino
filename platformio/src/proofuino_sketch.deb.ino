@@ -306,23 +306,22 @@ void loop()
     webSocket.loop();
     server.handleClient(); });
 
-  // #### Saftey NET ####
-  Temperatures temperatures = readTemperatures();
-  if(temperatures.TAC > 38){
-    updateState(new ErrorState(temperatures));
-    writeError("Temperature too high");
-  }
-  Relay relayState = getRelayState();
-  if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
-    updateState(new ErrorState(temperatures));
-    writeError("Relay on for too long");
-  }
-
-  // sendWebsocket(temperatures, relayState);  
 
   executeEvery(10 * SECONDS, []() {
+    // #### Saftey NET ####
+    Temperatures temperatures = readTemperatures();
+    if(temperatures.TAC > 38){
+      updateState(new ErrorState(temperatures));
+      writeError("Temperature too high");
+      return;
+    }
+    if(getRelayState() == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES){
+      updateState(new ErrorState(temperatures));
+      writeError("Relay on for too long");
+      return;
+    }
 
-    updateState(currentState->getNextState(readTemperatures()));
+    updateState(currentState->getNextState(temperatures));
 
     if(currentState->state == "ERROR"){
       turnRelayOff();

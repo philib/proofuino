@@ -102,7 +102,7 @@ public:
       return StateFactory::createCooldownState(temperatures);
     }
     //Boost On Transistion
-    if(temperatures.TDC < 26){
+    if(temperatures.TDC < 25.8){
       return StateFactory::createBoostOnState(temperatures);
     }
     if(temperatures.TAC >= 26.2){

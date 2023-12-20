@@ -254,17 +254,13 @@ WiFiManager wifiManager;
 
 unsigned long previousMillis = 0;
 
-// Higher Order Function für zeitgesteuerte Ausführung
 void executeEvery(unsigned long interval, std::function<void()> function)
 {
   unsigned long currentMillis = millis();
 
   if (previousMillis == 0 || currentMillis - previousMillis >= interval)
   {
-    // Speichern der aktuellen Zeit für das nächste Intervall
     previousMillis = currentMillis;
-
-    // Aufruf der übergebenen Funktion
     function();
   }
 }
@@ -374,10 +370,10 @@ void writeTemperaturesToInfluxDB(State *state)
 {
   onConnection([&state]()
                {
-    Point sensorData("Sensor");                            // Measurement name: Sensor
-    sensorData.addField("box", state->temperatures.TAC);   // Schreibe TAC in die Spalte "box"
-    sensorData.addField("bread", state->temperatures.TDC); // Schreibe TDC in die Spalte "bread"
-    client.writePoint(sensorData);                         // Datenpunkt in die InfluxDB schreiben
+    Point sensorData("Sensor");
+    sensorData.addField("box", state->temperatures.TAC);
+    sensorData.addField("bread", state->temperatures.TDC);
+    client.writePoint(sensorData);
 
     Point powerData("Power");
     powerData.addField("value", getRelayState() == ON ? 1 : 0);

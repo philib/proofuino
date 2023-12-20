@@ -29,40 +29,40 @@ const double TDD = 26.0;
 const double OFFSET = 0.5;
 const double TDD_OFFSET = 0.5;
 
-class NewState;
+class State;
 
 class StateFactory
 {
 public:
-  static NewState *createStartState(Temperatures temperatures);
-  static NewState *createCooldownState(Temperatures temperatures);
-  static NewState *createHoldOnState(Temperatures temperatures);
-  static NewState *createHoldOffState(Temperatures temperatures);
-  static NewState *createBoostOnState(Temperatures temperatures);
-  static NewState *createBoostOffState(Temperatures temperatures);
-  static NewState *createErrorState(Temperatures temperatures);
+  static State *createStartState(Temperatures temperatures);
+  static State *createCooldownState(Temperatures temperatures);
+  static State *createHoldOnState(Temperatures temperatures);
+  static State *createHoldOffState(Temperatures temperatures);
+  static State *createBoostOnState(Temperatures temperatures);
+  static State *createBoostOffState(Temperatures temperatures);
+  static State *createErrorState(Temperatures temperatures);
 };
 
-class NewState
+class State
 {
 public:
   Temperatures temperatures;
   Relay desiredRelayState;
   String state;
-  virtual ~NewState() {} // Virtual destructor
-  NewState(Temperatures temperatures, String state, Relay desiredRelayState)
+  virtual ~State() {} // Virtual destructor
+  State(Temperatures temperatures, String state, Relay desiredRelayState)
       : temperatures(temperatures), desiredRelayState(desiredRelayState), state(state) {}
 
-  virtual NewState *getNextState(Temperatures temperatures) = 0; // Pure virtual function
+  virtual State *getNextState(Temperatures temperatures) = 0; // Pure virtual function
 };
 
-class StartState : public NewState
+class StartState : public State
 {
 public:
-  StartState(Temperatures temperatures) : NewState(
+  StartState(Temperatures temperatures) : State(
                                               temperatures, "START", OFF) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
     if (temperatures.TDC > 26.2)
@@ -83,13 +83,13 @@ public:
   }
 };
 
-class CooldownState : public NewState
+class CooldownState : public State
 {
 public:
-  CooldownState(Temperatures temperatures) : NewState(
+  CooldownState(Temperatures temperatures) : State(
                                                  temperatures, "COOLDOWN", OFF) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     if (temperatures.TDC < 26)
     {
@@ -99,13 +99,13 @@ public:
   }
 };
 
-class HoldOnState : public NewState
+class HoldOnState : public State
 {
 public:
-  HoldOnState(Temperatures temperatures) : NewState(
+  HoldOnState(Temperatures temperatures) : State(
                                                temperatures, "HOLD_ON", ON) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
     if (temperatures.TDC > 26.2)
@@ -125,13 +125,13 @@ public:
   }
 };
 
-class HoldOffState : public NewState
+class HoldOffState : public State
 {
 public:
-  HoldOffState(Temperatures temperatures) : NewState(
+  HoldOffState(Temperatures temperatures) : State(
                                                 temperatures, "HOLD_OFF", OFF) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
     if (temperatures.TDC > 26.2)
@@ -151,13 +151,13 @@ public:
   }
 };
 
-class BoostOnState : public NewState
+class BoostOnState : public State
 {
 public:
-  BoostOnState(Temperatures temperatures) : NewState(
+  BoostOnState(Temperatures temperatures) : State(
                                                 temperatures, "BOOST_ON", ON) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
     //  due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
@@ -173,13 +173,13 @@ public:
   }
 };
 
-class BoostOffState : public NewState
+class BoostOffState : public State
 {
 public:
-  BoostOffState(Temperatures temperatures) : NewState(
+  BoostOffState(Temperatures temperatures) : State(
                                                  temperatures, "BOOST_OFF", OFF) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
     //  due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
@@ -196,49 +196,49 @@ public:
   }
 };
 
-class ErrorState : public NewState
+class ErrorState : public State
 {
 public:
-  ErrorState(Temperatures temperatures) : NewState(
+  ErrorState(Temperatures temperatures) : State(
                                               temperatures, "ERROR", OFF) {}
 
-  NewState *getNextState(Temperatures temperatures)
+  State *getNextState(Temperatures temperatures)
   {
     return this;
   }
 };
 
-NewState *StateFactory::createStartState(Temperatures temperatures)
+State *StateFactory::createStartState(Temperatures temperatures)
 {
   return new StartState(temperatures);
 }
 
-NewState *StateFactory::createCooldownState(Temperatures temperatures)
+State *StateFactory::createCooldownState(Temperatures temperatures)
 {
   return new CooldownState(temperatures);
 }
 
-NewState *StateFactory::createHoldOnState(Temperatures temperatures)
+State *StateFactory::createHoldOnState(Temperatures temperatures)
 {
   return new HoldOnState(temperatures);
 }
 
-NewState *StateFactory::createHoldOffState(Temperatures temperatures)
+State *StateFactory::createHoldOffState(Temperatures temperatures)
 {
   return new HoldOffState(temperatures);
 }
 
-NewState *StateFactory::createBoostOnState(Temperatures temperatures)
+State *StateFactory::createBoostOnState(Temperatures temperatures)
 {
   return new BoostOnState(temperatures);
 }
 
-NewState *StateFactory::createBoostOffState(Temperatures temperatures)
+State *StateFactory::createBoostOffState(Temperatures temperatures)
 {
   return new BoostOffState(temperatures);
 }
 
-NewState *StateFactory::createErrorState(Temperatures temperatures)
+State *StateFactory::createErrorState(Temperatures temperatures)
 {
   return new ErrorState(temperatures);
 }
@@ -254,7 +254,7 @@ WiFiClient wifiClient;
 
 ESP8266WebServer server(80);
 
-NewState *currentState;
+State *currentState;
 WiFiManager wifiManager;
 
 unsigned long previousMillis = 0;
@@ -301,7 +301,7 @@ Relay getRelayState()
   return digitalRead(RELAY_PIN) == HIGH ? ON : OFF;
 }
 
-void updateState(NewState *newState)
+void updateState(State *newState)
 {
   if (currentState == nullptr || newState->state != currentState->state)
   {
@@ -375,7 +375,7 @@ void writeError(String reason)
                  client.writePoint(errorData); });
 }
 
-void writeTemperaturesToInfluxDB(NewState *state)
+void writeTemperaturesToInfluxDB(State *state)
 {
   onConnection([&state]()
                {
@@ -390,7 +390,7 @@ void writeTemperaturesToInfluxDB(NewState *state)
     client.writePoint(powerData); });
 }
 
-void writeStateToInfluxDB(NewState *state)
+void writeStateToInfluxDB(State *state)
 {
   onConnection([&state]()
                {

@@ -252,6 +252,18 @@ void executeEvery(unsigned long interval, std::function<void()> function)
   }
 }
 
+void onConnection(std::function<void()> function)
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    function();
+  }
+  else
+  {
+    Serial.println("Not connected to WiFi");
+  }
+}
+
 unsigned long lastRelayOn = 0;
 
 void turnRelayOff() {
@@ -288,9 +300,11 @@ const int MINUTES = 60 * SECONDS;
 
 void loop()
 {
-  server.handleClient();
-  webSocket.loop();
-  ArduinoOTA.handle();
+  onConnection([]()
+               {
+    ArduinoOTA.handle();
+    webSocket.loop();
+    server.handleClient(); });
 
   // #### Saftey NET ####
   Temperatures temperatures = readTemperatures();
@@ -332,29 +346,41 @@ void loop()
 
 void writeError(String reason){
   Serial.println("Error: " + reason);
-  Point errorData("Error");
-  errorData.addField("reason", reason);
-  client.writePoint(errorData);
+  onConnection([&reason]() {
+
+    Point errorData("Error");
+    errorData.addField("reason", reason);
+    client.writePoint(errorData); 
+
+  });
 }
 
 void writeTemperaturesToInfluxDB(NewState* state)
 {
-  Point sensorData("Sensor"); // Measurement name: Sensor
-  sensorData.addField("box", state->temperatures.TAC);   // Schreibe TAC in die Spalte "box"
-  sensorData.addField("bread", state->temperatures.TDC); // Schreibe TDC in die Spalte "bread"
-  client.writePoint(sensorData); // Datenpunkt in die InfluxDB schreiben
+  onConnection([&state]() {
 
-  Point powerData("Power");
-  powerData.addField("value", getRelayState() == ON ? 1 : 0);
-  client.writePoint(powerData);
-  client.writePoint(powerData);
+    Point sensorData("Sensor");                            // Measurement name: Sensor
+    sensorData.addField("box", state->temperatures.TAC);   // Schreibe TAC in die Spalte "box"
+    sensorData.addField("bread", state->temperatures.TDC); // Schreibe TDC in die Spalte "bread"
+    client.writePoint(sensorData);                         // Datenpunkt in die InfluxDB schreiben
+
+    Point powerData("Power");
+    powerData.addField("value", getRelayState() == ON ? 1 : 0);
+    client.writePoint(powerData);
+    client.writePoint(powerData); 
+    
+  });
 }
 
 void writeStateToInfluxDB(NewState* state)
 {
-  Point stateData("State");
-  stateData.addField("state", state->state);
-  client.writePoint(stateData);
+  onConnection([&state]() {
+
+    Point stateData("State");
+    stateData.addField("state", state->state);
+    client.writePoint(stateData);
+
+  });
 }
 
 void sendWebsocket(Temperatures temperatures, Relay relayState){

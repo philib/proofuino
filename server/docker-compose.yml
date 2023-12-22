@@ -5,6 +5,8 @@ services:
     container_name: influxdb-container
     volumes:
       - influxdb-data:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=proofuino
     ports:
       - "8086:8086"
     network_mode: host
@@ -14,9 +16,8 @@ services:
     container_name: grafana-container
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./dashboard.json:/var/lib/grafana/dashboards/dashboard.json
-    environment:
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/dashboard.json
+      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+      - ./grafana/provisioning:/etc/grafana/provisioning
     ports:
       - "3000:3000"
     depends_on:

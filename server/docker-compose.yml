@@ -1,17 +1,16 @@
 version: '3'
 services:
   influxdb:
-    image: influxdb:latest
+    image: arm32v7/influxdb:1.8
     container_name: influxdb-container
     volumes:
       - influxdb-data:/var/lib/influxdb
     ports:
       - "8086:8086"
-    networks:
-      - host
+    network_mode: host
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:main
     container_name: grafana-container
     volumes:
       - grafana-data:/var/lib/grafana
@@ -22,13 +21,8 @@ services:
       - "3000:3000"
     depends_on:
       - influxdb
-    networks:
-      - host
+    network_mode: host
 
 volumes:
   influxdb-data:
   grafana-data:
-
-networks:
-  host:
-    external: true

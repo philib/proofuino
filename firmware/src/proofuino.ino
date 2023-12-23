@@ -331,23 +331,18 @@ void loop()
   executeEvery(10 * SECONDS, []()
                {
     Temperatures temperatures = readTemperatures();
+    updateState(currentState->getNextState(temperatures));
+
     Relay relayState = getRelayState();
+    Serial.println("State: " + currentState->state + " | Relay: " + (relayState == ON ? "ON" : "OFF") + " | TAC: " + temperatures.TAC + " | TDC: " + temperatures.TDC);
 
     bool isTemperatureToHigh = temperatures.TAC > 38;
     bool isRelayOnForTooLong = relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES;
     if(isTemperatureToHigh || isRelayOnForTooLong){
       updateState(new ErrorState(temperatures));
       isTemperatureToHigh ? writeError("Temperature too high") : writeError("Relay on for too long");
-      return;
     }
 
-    updateState(currentState->getNextState(temperatures));
-    Serial.println("State: " + currentState->state + " | Relay: " + (relayState == ON ? "ON" : "OFF") + " | TAC: " + temperatures.TAC + " | TDC: " + temperatures.TDC);
-
-    if(currentState->state == "ERROR"){
-      turnRelayOff();
-      return;
-    }
     if (currentState->desiredRelayState == ON) {
       turnRelayOn();
     } else {

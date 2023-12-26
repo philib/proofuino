@@ -1,8 +1,10 @@
-.main {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6rem;
-  min-height: 100vh;
+.parent {
+  display: grid;
+  grid-template-columns: 5fr 1fr;
+  gap: 10px;
+}
+.child {
+  display: grid;
+  place-content: center;
+  /* justify-content: center; */
 }

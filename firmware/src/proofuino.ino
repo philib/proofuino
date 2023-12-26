@@ -8,6 +8,7 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <LittleFS.h>
+#include <ArduinoJson.h>
 
 enum Relay
 {
@@ -328,28 +329,28 @@ void loop()
     ArduinoOTA.handle();
     server.handleClient(); });
 
-  // executeEvery(10 * SECONDS, []()
-  //              {
-  //   Temperatures temperatures = readTemperatures();
-  //   updateState(currentState->getNextState(temperatures));
+  executeEvery(10 * SECONDS, []()
+               {
+    Temperatures temperatures = readTemperatures();
+    updateState(currentState->getNextState(temperatures));
 
-  //   Relay relayState = getRelayState();
-  //   Serial.println("State: " + currentState->state + " | Relay: " + (relayState == ON ? "ON" : "OFF") + " | TAC: " + temperatures.TAC + " | TDC: " + temperatures.TDC);
+    Relay relayState = getRelayState();
+    Serial.println("State: " + currentState->state + " | Relay: " + (relayState == ON ? "ON" : "OFF") + " | TAC: " + temperatures.TAC + " | TDC: " + temperatures.TDC);
 
-  //   bool isTemperatureToHigh = temperatures.TAC > 38;
-  //   bool isRelayOnForTooLong = relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES;
-  //   if(isTemperatureToHigh || isRelayOnForTooLong){
-  //     updateState(new ErrorState(temperatures));
-  //     isTemperatureToHigh ? writeError("Temperature too high") : writeError("Relay on for too long");
-  //   }
+    bool isTemperatureToHigh = temperatures.TAC > 38;
+    bool isRelayOnForTooLong = relayState == ON && lastRelayOn != 0 && millis() - lastRelayOn > 10 * MINUTES;
+    if(isTemperatureToHigh || isRelayOnForTooLong){
+      updateState(new ErrorState(temperatures));
+      isTemperatureToHigh ? writeError("Temperature too high") : writeError("Relay on for too long");
+    }
 
-  //   if (currentState->desiredRelayState == ON) {
-  //     turnRelayOn();
-  //   } else {
-  //     turnRelayOff();
-  //   }
+    if (currentState->desiredRelayState == ON) {
+      turnRelayOn();
+    } else {
+      turnRelayOff();
+    }
 
-  //   writeTemperaturesToInfluxDB(currentState); });
+    writeTemperaturesToInfluxDB(currentState); });
 }
 
 void writeError(String reason)
@@ -435,20 +436,27 @@ void setupServer()
     Serial.println("Failed to mount LittleFS");
     return;
   }
-  server.on("/", HTTP_GET, []()
-            {
-    File file = LittleFS.open("/index.html", "r");
-    if (!file) {
-      Serial.println("Failed to open file");
-      server.send(404, "text/plain", "File not found");
-      return;
-    }
-    server.streamFile(file, "text/html");
-    file.close(); });
   server.on("/status", HTTP_GET, []()
             { 
-    String response = "State: " + currentState->state + "\nHeatmat: " + (getRelayState() == ON ? "ON" : "OFF") + "\nBox: " + currentState->temperatures.TAC + "\nDough: " + currentState->temperatures.TDC;
-    server.send(200, "text/plain", response); });
+              StaticJsonDocument<200> jsonDoc;
+              jsonDoc["state"] = currentState->state;
+              jsonDoc["heatmat"] = (getRelayState() == ON ? "ON" : "OFF");
+              jsonDoc["temperatures"]["box"] = currentState->temperatures.TAC;
+              jsonDoc["temperatures"]["dough"] = currentState->temperatures.TDC;
+              String response;
+              serializeJson(jsonDoc, response);
+              server.send(200, "application/json", response); });
+
+  server.on("/temperature", HTTP_POST, []()
+            {
+                String body = server.arg("plain");
+                StaticJsonDocument<200> jsonDoc;
+                deserializeJson(jsonDoc, body);
+                float desiredDoughTemperature = jsonDoc["desiredDoughTemperature"];
+                Serial.println("Desired dough temperature: " + String(desiredDoughTemperature));
+                server.send(200, "application/json", "{\"desiredDoughTemperature\": "+String(desiredDoughTemperature)+"}"); });
+  // must be at the end to not override other routes
+  server.serveStatic("/", LittleFS, "/");
   server.begin();
 }
 

@@ -5,25 +5,29 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [desiredTemp, setDesiredTemp] = useState(0);
   const [status, setStatus] = useState({
-    status: "BOOST_ON",
+    state: "BOOST_ON",
     heatmat: "ON",
-    temperatures: { dough: 23, box: 32 },
+    temperatures: { dough: 0, box: 0 },
   });
 
+  const fetchStatus = () => {
+    fetch(`http://${window.location.host}/status`)
+      .then((response) => response.json())
+      .then((data) => {
+        setDesiredTemp(data.temperatures.desiredDoughTemperature);
+        setStatus(data);
+      })
+      .catch((error) => console.error(error));
+  };
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch("http://proofuino.local/status")
-        .then((response) => response.json())
-        .then((data) => setStatus(data))
-        .catch((error) => console.error(error));
-    }, 2000);
-
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = (event: any) => {
     //send post request to /temperature
-    fetch("http://proofuino.local/temperature", {
+    fetch(`http://${window.location.host}/temperature`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -75,7 +79,7 @@ export default function Home() {
           </div>
           <div className={styles.infoBox}>
             <div className={styles.infoTitle}>Status</div>
-            <div className={styles.infoContent}>{status.status}</div>
+            <div className={styles.infoContent}>{status.state}</div>
           </div>
           <div className={styles.infoBox}>
             <div className={styles.infoTitle}>Heatmat</div>

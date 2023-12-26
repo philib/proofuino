@@ -443,6 +443,7 @@ void setupServer()
               StaticJsonDocument<200> jsonDoc;
               jsonDoc["state"] = currentState->state;
               jsonDoc["heatmat"] = (getRelayState() == ON ? "ON" : "OFF");
+              jsonDoc["temperatures"]["desiredDoughTemperature"] = desiredDoughTemperature;
               jsonDoc["temperatures"]["box"] = currentState->temperatures.TAC;
               jsonDoc["temperatures"]["dough"] = currentState->temperatures.TDC;
               String response;

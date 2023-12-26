@@ -1,10 +1,77 @@
-.parent {
-  display: grid;
-  grid-template-columns: 5fr 1fr;
-  gap: 10px;
+/* YourStyles.module.css */
+/* General spa container styles */
+.spaContainer {
+  font-family: "Arial", sans-serif;
+  padding: 20px;
+  background-color: #f5f5f5;
+  height: 100vh;
 }
-.child {
+
+/* Header styles */
+.header {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* Form styles */
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  margin-bottom: 5px;
+}
+
+.input[type="text"] {
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.submitButton {
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submitButton:hover {
+  background-color: #0056b3;
+}
+
+/* Information grid styles */
+.infoGrid {
   display: grid;
-  place-content: center;
-  /* justify-content: center; */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+/* Individual information box styles */
+.infoBox {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.infoTitle {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.infoContent {
+  color: #333;
+}
+
+/* Media query for responsiveness */
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }

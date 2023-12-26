@@ -10,6 +10,8 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 
+float desiredDoughTemperature = 26.0;
+
 enum Relay
 {
   ON,
@@ -62,17 +64,17 @@ public:
   State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
-    if (temperatures.TDC > 26.2)
+    if (temperatures.TDC > desiredDoughTemperature + 0.2)
     {
       return StateFactory::createCooldownState(temperatures);
     }
     // Hold Off
-    if (temperatures.TDC >= 26 && temperatures.TDC <= 26.2)
+    if (temperatures.TDC >= desiredDoughTemperature && temperatures.TDC <= desiredDoughTemperature + 0.2)
     {
       return StateFactory::createHoldOffState(temperatures);
     }
     // Boost On
-    if (temperatures.TDC < 26)
+    if (temperatures.TDC < desiredDoughTemperature)
     {
       return StateFactory::createBoostOnState(temperatures);
     }
@@ -88,7 +90,7 @@ public:
 
   State *getNextState(Temperatures temperatures)
   {
-    if (temperatures.TDC < 26)
+    if (temperatures.TDC < desiredDoughTemperature)
     {
       return StateFactory::createHoldOnState(temperatures);
     }
@@ -105,16 +107,16 @@ public:
   State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
-    if (temperatures.TDC > 26.2)
+    if (temperatures.TDC > desiredDoughTemperature + 0.2)
     {
       return StateFactory::createCooldownState(temperatures);
     }
     // Boost On Transistion
-    if (temperatures.TDC < 25.8)
+    if (temperatures.TDC < desiredDoughTemperature - 0.2)
     {
       return StateFactory::createBoostOnState(temperatures);
     }
-    if (temperatures.TAC >= 26.2)
+    if (temperatures.TAC >= desiredDoughTemperature + 0.2)
     {
       return StateFactory::createHoldOffState(temperatures);
     }
@@ -131,16 +133,16 @@ public:
   State *getNextState(Temperatures temperatures)
   {
     // Cooldown Transistion
-    if (temperatures.TDC > 26.2)
+    if (temperatures.TDC > desiredDoughTemperature + 0.2)
     {
       return StateFactory::createCooldownState(temperatures);
     }
     // Boost On Transistion
-    if (temperatures.TDC < 26)
+    if (temperatures.TDC < desiredDoughTemperature)
     {
       return StateFactory::createBoostOnState(temperatures);
     }
-    if (temperatures.TAC <= 25.8)
+    if (temperatures.TAC <= desiredDoughTemperature - 0.2)
     {
       return StateFactory::createHoldOnState(temperatures);
     }
@@ -158,7 +160,7 @@ public:
   {
     // Cooldown Transistion
     //  due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
-    if (temperatures.TDC > 26)
+    if (temperatures.TDC > desiredDoughTemperature)
     {
       return StateFactory::createCooldownState(temperatures);
     }
@@ -180,7 +182,7 @@ public:
   {
     // Cooldown Transistion
     //  due to boost the ambient temperature will be higher and the dough temperature is likely to rise event if the heating is off
-    if (temperatures.TDC > 26)
+    if (temperatures.TDC > desiredDoughTemperature)
     {
       return StateFactory::createCooldownState(temperatures);
     }
@@ -452,8 +454,7 @@ void setupServer()
                 String body = server.arg("plain");
                 StaticJsonDocument<200> jsonDoc;
                 deserializeJson(jsonDoc, body);
-                float desiredDoughTemperature = jsonDoc["desiredDoughTemperature"];
-                Serial.println("Desired dough temperature: " + String(desiredDoughTemperature));
+                desiredDoughTemperature = jsonDoc["desiredDoughTemperature"];
                 server.send(200, "application/json", "{\"desiredDoughTemperature\": "+String(desiredDoughTemperature)+"}"); });
   // must be at the end to not override other routes
   server.serveStatic("/", LittleFS, "/");

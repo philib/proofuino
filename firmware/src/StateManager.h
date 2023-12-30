@@ -109,8 +109,8 @@ private:
     }
     Range holdRange()
     {
-        float upperLimit = std::min(desiredDoughTemperature + 0.2f, maxDoughTemperature + 0.2f);
-        float lowerLimit = std::min(desiredDoughTemperature - 0.2f, maxDoughTemperature - 0.2f);
+        float upperLimit = std::min(desiredDoughTemperature + 2.0f, maxDoughTemperature + 2.0f);
+        float lowerLimit = std::min(desiredDoughTemperature - 0.5f, maxDoughTemperature - 0.5f);
         return Range(lowerLimit, upperLimit);
     }
 
@@ -126,7 +126,7 @@ public:
         Temperature dough = currentTemperature.dough;
         Temperature box = currentTemperature.box;
         bool doughNeedsCooldown = dough.isAbove(holdRange());
-        bool doughNeedsBoost = dough.isBelow(holdRange());
+        bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature - 0.2f);
 
         // this is a overall safety net
         if (box.isAbove(maxBoxTemperature))

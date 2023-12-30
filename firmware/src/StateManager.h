@@ -125,7 +125,7 @@ public:
         currentTemperature = currentTemp;
         Temperature dough = currentTemperature.dough;
         Temperature box = currentTemperature.box;
-        bool doughNeedsCooldown = dough.isAbove(holdRange());
+        bool doughNeedsCooldown = dough.isAbove(desiredDoughTemperature + 0.2f);
         bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature - 0.2f);
 
         // this is a overall safety net

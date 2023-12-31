@@ -1,5 +1,6 @@
 #include "config.h"
 #include "StateManager.h"
+#include "RelayManager.h"
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include <OneWire.h>
@@ -12,6 +13,7 @@
 #include <ArduinoJson.h>
 
 StateManager *stateManager;
+RelayManager *relayManager;
 OneWire oneWire;
 DallasTemperature sensors(&oneWire);
 InfluxDBClient client(INFLUXDB_URL, DATABASE);
@@ -19,7 +21,6 @@ WiFiClient wifiClient;
 ESP8266WebServer server(80);
 WiFiManager wifiManager;
 
-const int RELAY_PIN = D1;
 const int SECONDS = 1000;
 const int MINUTES = 60 * SECONDS;
 
@@ -42,21 +43,6 @@ void onConnection(std::function<void()> function)
   {
     function();
   }
-}
-
-void turnRelayOff()
-{
-  digitalWrite(RELAY_PIN, LOW);
-}
-
-void turnRelayOn()
-{
-  digitalWrite(RELAY_PIN, HIGH);
-}
-
-Relay getRelayState()
-{
-  return digitalRead(RELAY_PIN) == HIGH ? ON : OFF;
 }
 
 Temperatures readTemperatures(std::function<void()> onError)
@@ -122,7 +108,7 @@ void logSensorData(Temperatures temperatures)
     client.writePoint(sensorData);
 
     Point powerData("Power");
-    powerData.addField("value", getRelayState() == ON ? 1 : 0);
+    powerData.addField("value", relayManager->getRelayState() == RelayManager::State::ON ? 1 : 0);
     client.writePoint(powerData);
     client.writePoint(powerData); });
 }
@@ -131,7 +117,7 @@ void logState(String state)
 {
   onConnection([&state]()
                {
-    Point stateData("State");
+    Point stateData("StateManagerState");
     stateData.addField("state", state);
     client.writePoint(stateData); });
 }
@@ -163,7 +149,7 @@ void setupServer()
             { 
               StaticJsonDocument<200> jsonDoc;
               jsonDoc["state"] = stateManager->getStateStringified();
-              jsonDoc["heatmat"] = (getRelayState() == ON ? "ON" : "OFF");
+              jsonDoc["heatmat"] = (relayManager->getRelayState() == RelayManager::State::ON ? "ON" : "OFF");
               jsonDoc["temperatures"]["desiredDoughTemperature"] = stateManager->getDesiredDoughTemperature();
               jsonDoc["temperatures"]["box"] = stateManager->getTemperatures().box.getValue();
               jsonDoc["temperatures"]["dough"] = stateManager->getTemperatures().dough.getValue();
@@ -178,6 +164,19 @@ void setupServer()
                 deserializeJson(jsonDoc, body);
                 stateManager->setDesiredDoughTemperature(jsonDoc["desiredDoughTemperature"]);
                 server.send(200, "application/json", "{\"desiredDoughTemperature\": "+stateManager->getDesiredDoughTemperature()+"}"); });
+
+  server.on("/relay", HTTP_POST, []()
+            {
+                String body = server.arg("plain");
+                StaticJsonDocument<200> jsonDoc;
+                deserializeJson(jsonDoc, body);
+                String state = jsonDoc["state"];
+                if(state == "ON"){
+                  relayManager->enable();
+                }else {
+                  relayManager->disable();
+                }
+                server.send(200, "application/json", ""); });
   // must be at the end to not override other routes
   server.serveStatic("/", LittleFS, "/");
   server.begin();
@@ -191,18 +190,16 @@ void setup()
   setupWifi();
   setupServer();
 
-  pinMode(RELAY_PIN, OUTPUT);
-
   std::function<void(Relay, String)> onStateChange = [](Relay newRelayState, String state)
   {
     logState(state);
     if (newRelayState == ON)
     {
-      turnRelayOn();
+      relayManager->turnOn();
     }
     else
     {
-      turnRelayOff();
+      relayManager->turnOff();
     } };
 
   std::function<void(String)> onError = [](String error)
@@ -211,6 +208,7 @@ void setup()
   };
 
   float desiredDoughTemperature = 26.0;
+  relayManager = new RelayManager(D1);
   stateManager = new StateManager(desiredDoughTemperature, onStateChange,
                                   onError);
 }

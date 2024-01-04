@@ -11,11 +11,11 @@
 #include <ESP8266WebServer.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include "TemperatureManager.h"
 
 StateManager *stateManager;
 RelayManager *relayManager;
-OneWire oneWire;
-DallasTemperature sensors(&oneWire);
+TemperatureManager *temperatureManager;
 InfluxDBClient client(INFLUXDB_URL, DATABASE);
 WiFiClient wifiClient;
 ESP8266WebServer server(80);
@@ -45,30 +45,6 @@ void onConnection(std::function<void()> function)
   }
 }
 
-Temperatures readTemperatures(std::function<void()> onError)
-{
-  oneWire.begin(D2);
-  sensors.begin();
-
-  float dough = 0.0;
-  float box = 0.0;
-
-  sensors.requestTemperatures();
-
-  float tempTAC = sensors.getTempCByIndex(0);
-  float tempTDC = sensors.getTempCByIndex(1);
-  if (tempTAC != DEVICE_DISCONNECTED_C && tempTDC != DEVICE_DISCONNECTED_C)
-  {
-    dough = tempTDC;
-    box = tempTAC;
-  }
-  else
-  {
-    onError();
-  }
-  return Temperatures(box, dough);
-}
-
 void loop()
 {
   wifiManager.process();
@@ -83,7 +59,7 @@ void loop()
                  {
                    stateManager->setErrorState("Error reading temperatures");
                  };
-                 Temperatures temperatures = readTemperatures(onError);
+                 Temperatures temperatures = temperatureManager->getTemperatures(onError);
                  logSensorData(temperatures);
                  stateManager->process(temperatures); });
 }
@@ -206,6 +182,7 @@ void setup()
   };
 
   float desiredDoughTemperature = 26.0;
+  temperatureManager = new TemperatureManager(D2);
   relayManager = new RelayManager(D1);
   stateManager = new StateManager(desiredDoughTemperature, onStateChange,
                                   onError);

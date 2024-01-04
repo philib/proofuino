@@ -11,6 +11,7 @@ enum Relay
 
 enum State
 {
+    PAUSED,
     START,
     COOLDOWN,
     HOLD_ON,
@@ -122,6 +123,10 @@ public:
 
     void process(Temperatures currentTemp)
     {
+        if (state == PAUSED)
+        {
+            return;
+        }
         currentTemperature = currentTemp;
         Temperature dough = currentTemperature.dough;
         Temperature box = currentTemperature.box;
@@ -218,6 +223,16 @@ public:
             setErrorState("Unknown state");
             break;
         }
+    };
+
+    void pause()
+    {
+        transitionTo(PAUSED);
+    };
+
+    void restart()
+    {
+        transitionTo(START);
     };
 
     void setErrorState(String errorReason)

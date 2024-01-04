@@ -149,33 +149,31 @@ void setupServer()
             { 
               StaticJsonDocument<200> jsonDoc;
               jsonDoc["state"] = stateManager->getStateStringified();
-              jsonDoc["heatmat"] = (relayManager->getRelayState() == RelayManager::State::ON ? "ON" : "OFF");
-              jsonDoc["temperatures"]["desiredDoughTemperature"] = stateManager->getDesiredDoughTemperature();
-              jsonDoc["temperatures"]["box"] = stateManager->getTemperatures().box.getValue();
-              jsonDoc["temperatures"]["dough"] = stateManager->getTemperatures().dough.getValue();
+
+              jsonDoc["config"]["targetTemperature"] = stateManager->getDesiredDoughTemperature();
+
+              jsonDoc["sensors"]["relay"] = (relayManager->getRelayState() == RelayManager::State::ON ? "ON" : "OFF");
+              jsonDoc["sensors"]["temperatures"]["box"] = stateManager->getTemperatures().box.getValue();
+              jsonDoc["sensors"]["temperatures"]["dough"] = stateManager->getTemperatures().dough.getValue();
               String response;
               serializeJson(jsonDoc, response);
               server.send(200, "application/json", response); });
 
-  server.on("/temperature", HTTP_POST, []()
+  server.on("/config", HTTP_POST, []()
             {
                 String body = server.arg("plain");
                 StaticJsonDocument<200> jsonDoc;
                 deserializeJson(jsonDoc, body);
-                stateManager->setDesiredDoughTemperature(jsonDoc["desiredDoughTemperature"]);
-                server.send(200, "application/json", "{\"desiredDoughTemperature\": "+stateManager->getDesiredDoughTemperature()+"}"); });
+                stateManager->setDesiredDoughTemperature(jsonDoc["targetTemperature"]);
+                server.send(200, "application/json", ""); });
 
-  server.on("/relay", HTTP_POST, []()
+  server.on("/on", HTTP_POST, []()
             {
-                String body = server.arg("plain");
-                StaticJsonDocument<200> jsonDoc;
-                deserializeJson(jsonDoc, body);
-                String state = jsonDoc["state"];
-                if(state == "ON"){
-                  relayManager->enable();
-                }else {
-                  relayManager->disable();
-                }
+                  stateManager->restart();
+                server.send(200, "application/json", ""); });
+  server.on("/off", HTTP_POST, []()
+            {
+                  stateManager->pause();
                 server.send(200, "application/json", ""); });
   // must be at the end to not override other routes
   server.serveStatic("/", LittleFS, "/");

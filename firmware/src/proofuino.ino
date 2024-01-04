@@ -129,8 +129,8 @@ void setupServer()
               jsonDoc["config"]["targetTemperature"] = stateManager->getDesiredDoughTemperature();
 
               jsonDoc["sensors"]["relay"] = (relayManager->getRelayState() == RelayManager::State::ON ? "ON" : "OFF");
-              jsonDoc["sensors"]["temperatures"]["box"] = stateManager->getTemperatures().box.getValue();
-              jsonDoc["sensors"]["temperatures"]["dough"] = stateManager->getTemperatures().dough.getValue();
+              jsonDoc["sensors"]["temperatures"]["box"] = temperatureManager->getTemperatures([](){}).box.getValue();
+              jsonDoc["sensors"]["temperatures"]["dough"] = temperatureManager->getTemperatures([](){}).dough.getValue();
               String response;
               serializeJson(jsonDoc, response);
               server.send(200, "application/json", response); });

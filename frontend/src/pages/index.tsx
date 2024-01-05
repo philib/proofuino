@@ -87,6 +87,34 @@ export default function Home() {
     return status == null ? "Loading..." : f(status);
   };
 
+  const Box: React.FunctionComponent<{
+    children: ReactNode;
+    title: string;
+  }> = ({ children, title }) => {
+    return (
+      <div className={styles.infoBox}>
+        <div className={styles.infoTitle}>{title}</div>
+        <div className={styles.infoContent}>{children}</div>
+      </div>
+    );
+  };
+
+  const TextWithLabel: React.FunctionComponent<{
+    label: string;
+    text: string;
+  }> = ({ label, text }) => (
+    <div
+      style={{
+        padding: 3,
+        display: "grid",
+        gridTemplateColumns: "120px 1fr",
+      }}
+    >
+      <div>{label}:</div>
+      <b>{text}</b>
+    </div>
+  );
+
   return (
     <>
       <Head>
@@ -109,42 +137,36 @@ export default function Home() {
           )}
         </div>
         <div className={styles.infoGrid}>
-          <div className={styles.infoBox}>
-            <div className={styles.infoTitle}>Sensors</div>
-            <div className={styles.infoContent}>
-              {withStatus((status) => (
-                <>
-                  <text>Dough: {status.sensors.temperatures.dough}°C</text>
-                  <br />
-                  <text>Box: {status.sensors.temperatures.box}°C</text>
-                  <br />
-                  <text>Relay: {status.sensors.relay}</text>
-                </>
-              ))}
-            </div>
-          </div>
+          <Box title="Sensors">
+            {withStatus((status) => (
+              <>
+                <TextWithLabel
+                  label="Dough"
+                  text={`${status.sensors.temperatures.dough}°C`}
+                />
+                <TextWithLabel
+                  label="Box"
+                  text={`${status.sensors.temperatures.box}°C`}
+                />
+                <TextWithLabel label="Relay" text={status.sensors.relay} />
+              </>
+            ))}
+          </Box>
           {status != null && status.state != "PAUSED" && (
             <>
-              <div className={styles.infoBox}>
-                <div className={styles.infoTitle}>Status</div>
+              <Box title="Status">
+                {withStatus((status) => (
+                  <>
+                    <TextWithLabel label="State" text={status.state} />
+                    <TextWithLabel
+                      label="Target Dough Temperature"
+                      text={`${status.config.targetTemperature}°C`}
+                    />
+                  </>
+                ))}
+              </Box>
 
-                <div className={styles.infoContent}>
-                  {status == null ? (
-                    "Loading..."
-                  ) : (
-                    <>
-                      <text>State: {status.state}</text>
-                      <br />
-                      <text>
-                        Target Dough Temperature:{" "}
-                        {status.config.targetTemperature}°C
-                      </text>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className={styles.infoBox}>
-                <div className={styles.infoTitle}>Controls</div>
+              <Box title="Controls">
                 <form
                   style={{ marginTop: 10 }}
                   onSubmit={(e) => {
@@ -175,7 +197,7 @@ export default function Home() {
                     </Button>
                   </FormGroup>
                 </form>
-              </div>
+              </Box>
             </>
           )}
         </div>

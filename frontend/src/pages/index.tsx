@@ -83,12 +83,9 @@ export default function Home() {
     });
   };
 
-  interface ChildWithState {
-    status: Status;
-  }
-  const WithProofuinoStatus: React.FunctionComponent<{
-    children: React.FunctionComponent<ChildWithState>;
-  }> = ({ children }) => <>{status == null ? "Loading..." : children}</>;
+  const withStatus = (f: (status: Status) => ReactNode) => {
+    return status == null ? "Loading..." : f(status);
+  };
 
   return (
     <>
@@ -115,17 +112,15 @@ export default function Home() {
           <div className={styles.infoBox}>
             <div className={styles.infoTitle}>Sensors</div>
             <div className={styles.infoContent}>
-              <WithProofuinoStatus>
-                {({ status }) => (
-                  <>
-                    <text>Dough: {status.sensors.temperatures.dough}°C</text>
-                    <br />
-                    <text>Box: {status.sensors.temperatures.box}°C</text>
-                    <br />
-                    <text>Relay: {status.sensors.relay}</text>
-                  </>
-                )}
-              </WithProofuinoStatus>
+              {withStatus((status) => (
+                <>
+                  <text>Dough: {status.sensors.temperatures.dough}°C</text>
+                  <br />
+                  <text>Box: {status.sensors.temperatures.box}°C</text>
+                  <br />
+                  <text>Relay: {status.sensors.relay}</text>
+                </>
+              ))}
             </div>
           </div>
           {status != null && status.state != "PAUSED" && (

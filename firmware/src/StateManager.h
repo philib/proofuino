@@ -187,8 +187,11 @@ public:
 
     void setErrorState(String errorReason)
     {
-        transitionTo(ERROR);
-        onError(errorReason);
+        if (state != PAUSED)
+        {
+            transitionTo(ERROR);
+            onError(errorReason);
+        }
     };
 
     String getStateStringified()
@@ -209,6 +212,8 @@ public:
             return "BOOST_OFF";
         case ERROR:
             return "ERROR";
+        case PAUSED:
+            return "PAUSED";
         default:
             return "UNKNOWN";
         }

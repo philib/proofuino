@@ -93,7 +93,7 @@ void logState(String state)
 {
   onConnection([&state]()
                {
-    Point stateData("StateManagerState");
+    Point stateData("State");
     stateData.addField("state", state);
     client.writePoint(stateData); });
 }

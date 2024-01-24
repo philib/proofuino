@@ -2,6 +2,8 @@
 
 Proofuino is a project that combines hardware and software to create a Dough Proofing Box controlled by an ESP8266 using the Arduino platform. This setup utilizes a styrofoam box with internal components including a heating mat, relay, and temperature sensors to regulate and maintain the temperature for proofing dough.
 
+![Proofing Box](/images/proofing_box.JPG)
+
 ## Features
 
 - **Hardware Components:**
@@ -19,7 +21,17 @@ Proofuino is a project that combines hardware and software to create a Dough Pro
 - **Monitoring and Visualization:**
   - Raspberry Pi running a Grafana and InfluxDB Docker container for monitoring purposes.
   - The ESP8266 logs temperature readings, relay state, and the current mode to InfluxDB.
+  - The ESP8266 can be controlled and monitored using a React application. The application is served by the ESP8266.
   - Grafana dashboard visualizes the proofing process with graphical representations.
+
+## Insights
+
+### Web Interface
+![Web interface](/images/webinterface.png)
+
+### Grafana Dashboard
+![Grafana Dashboard](/images/grafana_dashboard.png)
+
 
 ## How It Works
 
@@ -27,12 +39,6 @@ The Proofuino system employs an ESP8266 microcontroller to manage the temperatur
 
 A Raspberry Pi is employed to oversee the proofing process through a Grafana dashboard, leveraging InfluxDB to store data logged by the ESP8266. This dashboard provides a visual representation of the temperature variations, relay states, and the current operational mode, offering insights into the proofing progress.
 
-## Usage
-
-To utilize Proofuino effectively, ensure the hardware components are properly assembled within the styrofoam box. Upload the Arduino code to the ESP8266 microcontroller to enable control and monitoring functionalities. Set up the Raspberry Pi with Grafana and InfluxDB Docker containers to visualize and monitor the proofing process.
-
-Refer to the documentation and code within the respective folders for detailed instructions on setup and configuration.
-
 ---
 
-*Note: This README provides an overview of the Proofuino project. For detailed setup instructions, code explanations, and additional information, refer to the project documentation and accompanying files.*
+*Note: This README only provides an rough overview of the Proofuino project. If you have any questions, please feel free to contact me.*

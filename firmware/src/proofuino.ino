@@ -25,36 +25,38 @@ const int SECONDS = 1000;
 const int MINUTES = 60 * SECONDS;
 
 unsigned long previousMillis = 0;
+bool serverRequestInProgress = false;
 
 void executeEvery(unsigned long interval, std::function<void()> function)
 {
   unsigned long currentMillis = millis();
 
-  if (previousMillis == 0 || currentMillis - previousMillis >= interval)
+  if (!serverRequestInProgress && (previousMillis == 0 || currentMillis - previousMillis >= interval))
   {
     previousMillis = currentMillis;
     function();
   }
 }
 
-void onConnection(std::function<void()> function)
+std::function<void()> blockLoop(std::function<void()> function)
 {
-  if (WiFi.status() == WL_CONNECTED)
+  return [function]()
   {
+    serverRequestInProgress = true;
     function();
-  }
+    serverRequestInProgress = false;
+  };
 }
 
 void loop()
 {
   wifiManager.process();
-  onConnection([]()
-               {
-    ArduinoOTA.handle();
-    server.handleClient(); });
+  ArduinoOTA.handle();
+  server.handleClient();
 
-  executeEvery(10 * SECONDS, []()
+  executeEvery(30 * SECONDS, []()
                {
+                 logEspInfos();
                  std::function<void()> onError = []()
                  {
                    stateManager->setErrorState("Error reading temperatures");
@@ -64,38 +66,44 @@ void loop()
                  stateManager->process(temperatures); });
 }
 
+void logEspInfos()
+{
+  Point espData("ESP");
+  bool isWifiConnected = WiFi.isConnected();
+  int wifiStrength = WiFi.RSSI();
+  int freeHeap = ESP.getFreeHeap();
+  espData.addField("wifiStatus", isWifiConnected ? "connected" : "disconnected");
+  espData.addField("wifiStrength", wifiStrength);
+  espData.addField("freeHeap", freeHeap);
+  client.writePoint(espData);
+}
+
 void writeError(String reason)
 {
   Serial.println("Error: " + reason);
-  onConnection([&reason]()
-               {
-                 Point errorData("Error");
-                 errorData.addField("reason", reason);
-                 client.writePoint(errorData); });
+  Point errorData("Error");
+  errorData.addField("reason", reason);
+  client.writePoint(errorData);
 }
 
 void logSensorData(Temperatures temperatures)
 {
-  onConnection([&temperatures]()
-               {
-    Point sensorData("Sensor");
-    sensorData.addField("box", temperatures.box.getValue());
-    sensorData.addField("bread", temperatures.dough.getValue());
-    client.writePoint(sensorData);
+  Point sensorData("Sensor");
+  sensorData.addField("box", temperatures.box.getValue());
+  sensorData.addField("bread", temperatures.dough.getValue());
+  client.writePoint(sensorData);
 
-    Point powerData("Power");
-    powerData.addField("value", relayManager->getRelayState() == RelayManager::State::ON ? 1 : 0);
-    client.writePoint(powerData);
-    client.writePoint(powerData); });
+  Point powerData("Power");
+  powerData.addField("value", relayManager->getRelayState() == RelayManager::State::ON ? 1 : 0);
+  client.writePoint(powerData);
+  client.writePoint(powerData);
 }
 
 void logState(String state)
 {
-  onConnection([&state]()
-               {
-    Point stateData("State");
-    stateData.addField("state", state);
-    client.writePoint(stateData); });
+  Point stateData("State");
+  stateData.addField("state", state);
+  client.writePoint(stateData);
 }
 
 void setupOTA()
@@ -121,8 +129,8 @@ void setupServer()
     Serial.println("Failed to mount LittleFS");
     return;
   }
-  server.on("/status", HTTP_GET, []()
-            { 
+  server.on("/status", HTTP_GET, blockLoop([]()
+                                      { 
               StaticJsonDocument<200> jsonDoc;
               jsonDoc["state"] = stateManager->getStateStringified();
 
@@ -133,24 +141,24 @@ void setupServer()
               jsonDoc["sensors"]["temperatures"]["dough"] = temperatureManager->getTemperatures([](){}).dough.getValue();
               String response;
               serializeJson(jsonDoc, response);
-              server.send(200, "application/json", response); });
+              server.send(200, "application/json", response); }));
 
-  server.on("/config", HTTP_POST, []()
+  server.on("/config", HTTP_POST, blockLoop([]()
             {
                 String body = server.arg("plain");
                 StaticJsonDocument<200> jsonDoc;
                 deserializeJson(jsonDoc, body);
                 stateManager->setDesiredDoughTemperature(jsonDoc["targetTemperature"]);
-                server.send(200, "application/json", ""); });
+                server.send(200, "application/json", ""); }));
 
-  server.on("/on", HTTP_POST, []()
+  server.on("/on", HTTP_POST, blockLoop([]()
             {
                   stateManager->restart();
-                server.send(200, "application/json", ""); });
-  server.on("/off", HTTP_POST, []()
+                server.send(200, "application/json", ""); }));
+  server.on("/off", HTTP_POST, blockLoop([]()
             {
                   stateManager->pause();
-                server.send(200, "application/json", ""); });
+                server.send(200, "application/json", ""); }));
   // must be at the end to not override other routes
   server.serveStatic("/", LittleFS, "/");
   server.begin();

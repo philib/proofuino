@@ -17,6 +17,7 @@ public:
 
 private:
     int pin;
+    int errorReadings = 0;
 
 public:
     TemperatureManager(int pin) : pin(pin)
@@ -37,10 +38,13 @@ public:
         {
             dough = tempTDC;
             box = tempTAC;
+            errorReadings = 0;
         }
         else
         {
-            onError();
+            if(errorReadings++ == 3){
+                onError();
+            }
         }
         return Temperatures(box, dough);
     }

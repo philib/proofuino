@@ -19,6 +19,7 @@ enum State
     HOLD_OFF,
     BOOST_ON,
     BOOST_OFF,
+    DETENTION,
     ERROR
 };
 
@@ -28,6 +29,7 @@ private:
     const float maxDoughTemperature = 32.0f;
     const float maxBoxTemperature = 40.0f;
     unsigned long lastPhaseChange;
+    unsigned long detentionStart;
     float desiredDoughTemperature;
     State state;
     Relay currentRelayState;
@@ -86,12 +88,12 @@ public:
         // this is a overall safety net
         if (box.isAbove(maxBoxTemperature))
         {
-            setErrorState("Box too hot");
+            detent();
             return;
         }
-        else if (currentRelayState == ON && millis() - lastPhaseChange > 20 * 60 * 1000)
+        else if (currentRelayState == ON && millis() - lastPhaseChange > 10 * 60 * 1000)
         {
-            setErrorState("Heating on for too long");
+            detent();
             return;
         };
 
@@ -169,6 +171,14 @@ public:
                 transitionTo(BOOST_ON);
             }
             break;
+        case DETENTION:
+            if (detentionOver())
+            {
+                transitionTo(START);
+            }
+            break;
+        case ERROR:
+            break;
         default:
             setErrorState("Unknown state");
             break;
@@ -192,6 +202,17 @@ public:
             transitionTo(ERROR);
             onError(errorReason);
         }
+    };
+
+    void detent()
+    {
+        detentionStart = millis();
+        transitionTo(DETENTION);
+    };
+
+    bool detentionOver()
+    {
+        return millis() - detentionStart > 10 * 60 * 1000;
     };
 
     String getStateStringified()

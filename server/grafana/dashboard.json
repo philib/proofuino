@@ -72,10 +72,11 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "textMode": "value_and_name",
         "wideLayout": true
       },
-      "pluginVersion": "10.2.2",
+      "pluginVersion": "10.3.0-152042",
       "targets": [
         {
           "alias": "Box",
@@ -231,10 +232,11 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.2.2",
+      "pluginVersion": "10.3.0-152042",
       "targets": [
         {
           "alias": "Box",
@@ -315,10 +317,11 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "textMode": "value_and_name",
         "wideLayout": true
       },
-      "pluginVersion": "10.2.2",
+      "pluginVersion": "10.3.0-152042",
       "targets": [
         {
           "alias": "Box",
@@ -815,17 +818,148 @@
       "title": "Proofuino State",
       "transformations": [],
       "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "b1f5dd51-97ee-4287-a37f-83867c66c476"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "fillOpacity": 70,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "BOOST_OFF": {
+                  "color": "dark-red",
+                  "index": 1
+                },
+                "BOOST_ON": {
+                  "color": "dark-green",
+                  "index": 0
+                },
+                "COOLDOWN": {
+                  "color": "blue",
+                  "index": 5
+                },
+                "HOLD_OFF": {
+                  "color": "red",
+                  "index": 3
+                },
+                "HOLD_ON": {
+                  "color": "green",
+                  "index": 2
+                },
+                "START": {
+                  "color": "dark-yellow",
+                  "index": 6
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "color": "transparent",
+                  "index": 4
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 12,
+      "interval": "10s",
+      "options": {
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [
+        {
+          "alias": "Box",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "b1f5dd51-97ee-4287-a37f-83867c66c476"
+          },
+          "groupBy": [],
+          "hide": false,
+          "measurement": "Error",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"bread\") AS \"Current\", mean(\"bread\") AS \"Avg\", max(\"bread\") AS \"Max\", min(\"bread\") AS \"Min\" FROM \"Sensor\" WHERE $timeFilter",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "table",
+          "select": [
+            [
+              {
+                "params": [
+                  "reason"
+                ],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "title": "Error Reason",
+      "transformations": [],
+      "type": "state-timeline"
     }
   ],
-  "refresh": "10s",
-  "schemaVersion": 38,
+  "refresh": false,
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now/d",
-    "to": "now/d"
+    "from": "2024-09-17T05:22:53.525Z",
+    "to": "2024-09-17T08:23:05.539Z"
   },
   "timepicker": {
     "hidden": false,
@@ -836,6 +970,6 @@
   "timezone": "browser",
   "title": "Proofuino",
   "uid": "f5fb563b-7e16-4154-8992-8becfc58a690",
-  "version": 15,
+  "version": 5,
   "weekStart": "monday"
 }

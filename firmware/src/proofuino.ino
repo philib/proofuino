@@ -26,12 +26,13 @@ const int MINUTES = 60 * SECONDS;
 
 unsigned long previousMillis = 0;
 bool serverRequestInProgress = false;
+bool otaUpdateInProgress = false;
 
 void executeEvery(unsigned long interval, std::function<void()> function)
 {
   unsigned long currentMillis = millis();
 
-  if (!serverRequestInProgress && (previousMillis == 0 || currentMillis - previousMillis >= interval))
+  if (previousMillis == 0 || currentMillis - previousMillis >= interval)
   {
     previousMillis = currentMillis;
     function();
@@ -50,6 +51,10 @@ std::function<void()> blockLoop(std::function<void()> function)
 
 void loop()
 {
+  if (otaUpdateInProgress || serverRequestInProgress)
+  {
+    return;
+  }
   wifiManager.process();
   ArduinoOTA.handle();
   server.handleClient();
@@ -108,6 +113,8 @@ void logState(String state)
 
 void setupOTA()
 {
+  ArduinoOTA.onStart([]()
+                     { otaUpdateInProgress = true; });
   ArduinoOTA.onEnd([]()
                    { ESP.restart(); });
   ArduinoOTA.begin();
@@ -130,7 +137,7 @@ void setupServer()
     return;
   }
   server.on("/status", HTTP_GET, blockLoop([]()
-                                      { 
+                                           { 
               StaticJsonDocument<200> jsonDoc;
               jsonDoc["state"] = stateManager->getStateStringified();
 
@@ -144,7 +151,7 @@ void setupServer()
               server.send(200, "application/json", response); }));
 
   server.on("/config", HTTP_POST, blockLoop([]()
-            {
+                                            {
                 String body = server.arg("plain");
                 StaticJsonDocument<200> jsonDoc;
                 deserializeJson(jsonDoc, body);
@@ -152,11 +159,11 @@ void setupServer()
                 server.send(200, "application/json", ""); }));
 
   server.on("/on", HTTP_POST, blockLoop([]()
-            {
+                                        {
                   stateManager->restart();
                 server.send(200, "application/json", ""); }));
   server.on("/off", HTTP_POST, blockLoop([]()
-            {
+                                         {
                   stateManager->pause();
                 server.send(200, "application/json", ""); }));
   // must be at the end to not override other routes

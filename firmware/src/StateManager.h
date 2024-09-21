@@ -235,6 +235,8 @@ public:
             return "ERROR";
         case PAUSED:
             return "PAUSED";
+        case DETENTION:
+            return "DETENTION";
         default:
             return "UNKNOWN";
         }

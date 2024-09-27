@@ -86,16 +86,19 @@ public:
         bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature - 0.2f);
 
         // this is a overall safety net
-        if (box.isAbove(maxBoxTemperature))
+        if (currentRelayState == ON)
         {
-            detent();
-            return;
+            if (box.isAbove(maxBoxTemperature))
+            {
+                detent();
+                return;
+            }
+            else if (millis() - lastPhaseChange > 10 * 60 * 1000)
+            {
+                detent();
+                return;
+            };
         }
-        else if (currentRelayState == ON && millis() - lastPhaseChange > 10 * 60 * 1000)
-        {
-            detent();
-            return;
-        };
 
         switch (state)
         {

@@ -34,7 +34,6 @@ public:
 class StateManager
 {
 private:
-    const float maxDoughTemperature = 32.0f;
     const float maxBoxTemperature = 40.0f;
     unsigned long lastPhaseChange;
     unsigned long detentionStart;
@@ -64,14 +63,14 @@ private:
     }
     Range boostRange()
     {
-        float lowerLimit = std::min(desiredDoughTemperature.value + 4, maxDoughTemperature + 4);
-        float upperLimit = std::min(desiredDoughTemperature.value + 6, maxDoughTemperature + 6);
+        float lowerLimit = desiredDoughTemperature.value + 4;
+        float upperLimit = desiredDoughTemperature.value + 6;
         return Range(lowerLimit, upperLimit);
     }
     Range holdRange()
     {
-        float lowerLimit = std::min(desiredDoughTemperature.value - 0.5f, maxDoughTemperature - 0.5f);
-        float upperLimit = std::min(desiredDoughTemperature.value + 2.0f, maxDoughTemperature + 2.0f);
+        float lowerLimit = desiredDoughTemperature.value - 0.5f;
+        float upperLimit = desiredDoughTemperature.value + 2.0f;
         return Range(lowerLimit, upperLimit);
     }
 

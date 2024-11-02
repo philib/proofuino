@@ -56,19 +56,26 @@ private:
     }
     Range boostRange()
     {
-        float upperLimit = std::min(desiredDoughTemperature + 6, maxDoughTemperature + 6);
         float lowerLimit = std::min(desiredDoughTemperature + 4, maxDoughTemperature + 4);
+        float upperLimit = std::min(desiredDoughTemperature + 6, maxDoughTemperature + 6);
         return Range(lowerLimit, upperLimit);
     }
     Range holdRange()
     {
-        float upperLimit = std::min(desiredDoughTemperature + 2.0f, maxDoughTemperature + 2.0f);
         float lowerLimit = std::min(desiredDoughTemperature - 0.5f, maxDoughTemperature - 0.5f);
+        float upperLimit = std::min(desiredDoughTemperature + 2.0f, maxDoughTemperature + 2.0f);
         return Range(lowerLimit, upperLimit);
     }
 
 public:
-    StateManager(float desiredDoughTemperature, std::function<void(Relay, String)> onStateChange, std::function<void(String)> onError) : lastPhaseChange(millis()), desiredDoughTemperature(desiredDoughTemperature), state(START), currentRelayState(OFF), currentTemperature(Temperatures(0.0, 0.0)), onStateChange(onStateChange), onError(onError)
+    StateManager(float desiredDoughTemperature, std::function<void(Relay, String)> onStateChange, std::function<void(String)> onError) :
+        lastPhaseChange(millis()),
+        desiredDoughTemperature(desiredDoughTemperature),
+        state(START),
+        currentRelayState(OFF),
+        currentTemperature(Temperatures(0.0, 0.0)),
+        onStateChange(onStateChange),
+        onError(onError)
     {
         onStateChange(currentRelayState, this->getStateStringified());
     }

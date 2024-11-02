@@ -106,7 +106,7 @@ public:
                 detent();
                 return;
             }
-            else if (millis() - lastPhaseChange > 10 * 60 * 1000)
+            else if (millis() - lastPhaseChange > DETENTION_THRESHOLD)
             {
                 detent();
                 return;

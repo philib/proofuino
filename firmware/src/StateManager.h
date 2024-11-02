@@ -1,3 +1,4 @@
+#include "config.h"
 #include <core_esp8266_features.h>
 #include <functional>
 #include <algorithm>
@@ -23,6 +24,13 @@ enum State
     ERROR
 };
 
+class DesiredDoughTemperature
+{
+public:
+    float value;
+    DesiredDoughTemperature(float value) : value(std::min(value, MAX_DOUGH_TEMP)) {}
+};
+
 class StateManager
 {
 private:
@@ -30,7 +38,7 @@ private:
     const float maxBoxTemperature = 40.0f;
     unsigned long lastPhaseChange;
     unsigned long detentionStart;
-    float desiredDoughTemperature;
+    DesiredDoughTemperature desiredDoughTemperature;
     State state;
     Relay currentRelayState;
     Temperatures currentTemperature;
@@ -56,14 +64,14 @@ private:
     }
     Range boostRange()
     {
-        float lowerLimit = std::min(desiredDoughTemperature + 4, maxDoughTemperature + 4);
-        float upperLimit = std::min(desiredDoughTemperature + 6, maxDoughTemperature + 6);
+        float lowerLimit = std::min(desiredDoughTemperature.value + 4, maxDoughTemperature + 4);
+        float upperLimit = std::min(desiredDoughTemperature.value + 6, maxDoughTemperature + 6);
         return Range(lowerLimit, upperLimit);
     }
     Range holdRange()
     {
-        float lowerLimit = std::min(desiredDoughTemperature - 0.5f, maxDoughTemperature - 0.5f);
-        float upperLimit = std::min(desiredDoughTemperature + 2.0f, maxDoughTemperature + 2.0f);
+        float lowerLimit = std::min(desiredDoughTemperature.value - 0.5f, maxDoughTemperature - 0.5f);
+        float upperLimit = std::min(desiredDoughTemperature.value + 2.0f, maxDoughTemperature + 2.0f);
         return Range(lowerLimit, upperLimit);
     }
 
@@ -89,8 +97,8 @@ public:
         currentTemperature = currentTemp;
         Temperature dough = currentTemperature.dough;
         Temperature box = currentTemperature.box;
-        bool doughNeedsCooldown = dough.isAbove(desiredDoughTemperature + 0.2f);
-        bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature - 0.2f);
+        bool doughNeedsCooldown = dough.isAbove(desiredDoughTemperature.value + 0.2f);
+        bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature.value - 0.2f);
 
         // this is a overall safety net
         if (currentRelayState == ON)
@@ -118,13 +126,13 @@ public:
             {
                 transitionTo(HOLD_OFF);
             }
-            else if (dough.isBelow(desiredDoughTemperature))
+            else if (dough.isBelow(desiredDoughTemperature.value))
             {
                 transitionTo(BOOST_ON);
             }
             break;
         case COOLDOWN:
-            if (dough.isBelow(desiredDoughTemperature))
+            if (dough.isBelow(desiredDoughTemperature.value))
             {
                 transitionTo(HOLD_ON);
             }
@@ -162,7 +170,7 @@ public:
             {
                 transitionTo(COOLDOWN);
             }
-            else if (dough.isAbove(desiredDoughTemperature))
+            else if (dough.isAbove(desiredDoughTemperature.value))
             {
                 transitionTo(HOLD_OFF);
             }
@@ -259,11 +267,11 @@ public:
 
     String getDesiredDoughTemperature()
     {
-        return String(desiredDoughTemperature);
+        return String(desiredDoughTemperature.value);
     }
 
     void setDesiredDoughTemperature(float desiredDoughTemperature)
     {
-        this->desiredDoughTemperature = std::min(desiredDoughTemperature, maxDoughTemperature);
+        this->desiredDoughTemperature = DesiredDoughTemperature(desiredDoughTemperature);
     }
 };

@@ -34,7 +34,6 @@ public:
 class StateManager
 {
 private:
-    const float maxBoxTemperature = 40.0f;
     unsigned long lastPhaseChange;
     unsigned long detentionStart;
     DesiredDoughTemperature desiredDoughTemperature;
@@ -102,7 +101,7 @@ public:
         // this is a overall safety net
         if (currentRelayState == ON)
         {
-            if (box.isAbove(maxBoxTemperature))
+            if (box.isAbove(MAX_BOX_TEMP))
             {
                 detent();
                 return;

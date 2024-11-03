@@ -51,13 +51,14 @@ std::function<void()> blockLoop(std::function<void()> function)
 
 void loop()
 {
+  wifiManager.process();
+  ArduinoOTA.handle();
+  server.handleClient();
+
   if (otaUpdateInProgress || serverRequestInProgress)
   {
     return;
   }
-  wifiManager.process();
-  ArduinoOTA.handle();
-  server.handleClient();
 
   executeEvery(30 * SECONDS, []()
                {

@@ -15,7 +15,6 @@ enum State
 {
     PAUSED,
     START,
-    COOLDOWN,
     HOLD_ON,
     HOLD_OFF,
     BOOST_ON,
@@ -60,18 +59,6 @@ private:
             onStateChange(currentRelayState, this->getStateStringified());
         }
     }
-    Range boostRange()
-    {
-        float lowerLimit = desiredDoughTemperature.value + 4;
-        float upperLimit = desiredDoughTemperature.value + 6;
-        return Range(lowerLimit, upperLimit);
-    }
-    Range holdRange()
-    {
-        float lowerLimit = desiredDoughTemperature.value - 0.5f;
-        float upperLimit = desiredDoughTemperature.value + 2.0f;
-        return Range(lowerLimit, upperLimit);
-    }
 
 public:
     StateManager(float desiredDoughTemperature, std::function<void(Relay, String)> onStateChange, std::function<void(String)> onError) :
@@ -95,8 +82,6 @@ public:
         currentTemperature = currentTemp;
         Temperature dough = currentTemperature.dough;
         Temperature box = currentTemperature.box;
-        bool doughNeedsCooldown = dough.isAbove(desiredDoughTemperature.value + 0.2f);
-        bool doughNeedsBoost = dough.isBelow(desiredDoughTemperature.value - 0.2f);
 
         // this is a overall safety net
         if (currentRelayState == ON)
@@ -116,73 +101,55 @@ public:
         switch (state)
         {
         case START:
-            if (doughNeedsCooldown)
+            if (dough.isBelow(desiredDoughTemperature.value))
             {
-                transitionTo(COOLDOWN);
+                transitionTo(BOOST_ON);
             }
-            else if (dough.isWithin(holdRange()))
+            else
             {
                 transitionTo(HOLD_OFF);
             }
-            else if (dough.isBelow(desiredDoughTemperature.value))
-            {
-                transitionTo(BOOST_ON);
-            }
-            break;
-        case COOLDOWN:
-            if (dough.isBelow(desiredDoughTemperature.value))
-            {
-                transitionTo(HOLD_ON);
-            }
             break;
         case HOLD_ON:
-            if (doughNeedsCooldown)
+            if (dough.isAbove(desiredDoughTemperature.value))
             {
-                transitionTo(COOLDOWN);
+                transitionTo(HOLD_OFF);
             }
-            else if (doughNeedsBoost)
-            {
-                transitionTo(BOOST_ON);
-            }
-            else if (box.isAbove(holdRange()))
+            else if (box.isAbove(desiredDoughTemperature.value + 1.0f))
             {
                 transitionTo(HOLD_OFF);
             }
             break;
         case HOLD_OFF:
-            if (doughNeedsCooldown)
+            if (dough.isBelow(desiredDoughTemperature.value - 0.5f))
             {
-                transitionTo(COOLDOWN);
+                transitionTo(HOLD_ON);
             }
-            else if (doughNeedsBoost)
+            else if (dough.isBelow(desiredDoughTemperature.value - 1.0f))
             {
                 transitionTo(BOOST_ON);
             }
-            else if (box.isBelow(holdRange()))
+            else if (box.isBelow(desiredDoughTemperature.value - 2.0f))
             {
                 transitionTo(HOLD_ON);
             }
             break;
         case BOOST_ON:
-            if (doughNeedsCooldown)
-            {
-                transitionTo(COOLDOWN);
-            }
-            else if (dough.isAbove(desiredDoughTemperature.value))
+            if (dough.isAbove(desiredDoughTemperature.value - 0.5f))
             {
                 transitionTo(HOLD_OFF);
             }
-            else if (box.isAbove(boostRange()))
+            else if (box.isAbove(desiredDoughTemperature.value + 6.0f))
             {
                 transitionTo(BOOST_OFF);
             }
             break;
         case BOOST_OFF:
-            if (doughNeedsCooldown)
+            if (dough.isAbove(desiredDoughTemperature.value - 0.5f))
             {
-                transitionTo(COOLDOWN);
+                transitionTo(HOLD_OFF);
             }
-            else if (box.isBelow(boostRange()))
+            else if (box.isBelow(desiredDoughTemperature.value + 4.0f))
             {
                 transitionTo(BOOST_ON);
             }
@@ -237,8 +204,6 @@ public:
         {
         case START:
             return "START";
-        case COOLDOWN:
-            return "COOLDOWN";
         case HOLD_ON:
             return "HOLD_ON";
         case HOLD_OFF:

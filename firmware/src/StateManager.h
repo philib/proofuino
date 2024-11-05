@@ -111,45 +111,46 @@ public:
             }
             break;
         case HOLD_ON:
-            if (dough.isAbove(desiredDoughTemperature.value))
-            {
-                transitionTo(HOLD_OFF);
-            }
-            else if (box.isAbove(desiredDoughTemperature.value + 1.0f))
+            if (
+                dough.isAbove(desiredDoughTemperature.value) ||
+                box.isAbove(desiredDoughTemperature.value + 2.0f)
+               )
             {
                 transitionTo(HOLD_OFF);
             }
             break;
         case HOLD_OFF:
-            if (dough.isBelow(desiredDoughTemperature.value - 0.5f))
+            if (
+                dough.isBelow(desiredDoughTemperature.value) && 
+                box.isBelow(desiredDoughTemperature.value - 2.0f)
+               )
             {
                 transitionTo(HOLD_ON);
             }
-            else if (dough.isBelow(desiredDoughTemperature.value - 1.0f))
+            else if (dough.isBelow(desiredDoughTemperature.value - 0.3f))
             {
-                transitionTo(BOOST_ON);
-            }
-            else if (box.isBelow(desiredDoughTemperature.value - 2.0f))
-            {
-                transitionTo(HOLD_ON);
+                // in case the box has a higher temperature than the dough we use the rest of the heat before boosting
+                transitionTo(BOOST_OFF);
             }
             break;
         case BOOST_ON:
-            if (dough.isAbove(desiredDoughTemperature.value - 0.5f))
-            {
-                transitionTo(HOLD_OFF);
-            }
-            else if (box.isAbove(desiredDoughTemperature.value + 6.0f))
+            if (
+                dough.isAbove(desiredDoughTemperature.value) ||
+                box.isAbove(desiredDoughTemperature.value + 6.0f)
+               )
             {
                 transitionTo(BOOST_OFF);
             }
             break;
         case BOOST_OFF:
-            if (dough.isAbove(desiredDoughTemperature.value - 0.5f))
+            if (dough.isAbove(desiredDoughTemperature.value))
             {
                 transitionTo(HOLD_OFF);
             }
-            else if (box.isBelow(desiredDoughTemperature.value + 4.0f))
+            else if (
+                dough.isBelow(desiredDoughTemperature.value) &&
+                box.isBelow(desiredDoughTemperature.value + 4.0f)
+               )
             {
                 transitionTo(BOOST_ON);
             }

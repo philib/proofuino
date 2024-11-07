@@ -120,17 +120,13 @@ public:
             }
             break;
         case HOLD_OFF:
-            if (
-                dough.isBelow(desiredDoughTemperature.value) && 
-                box.isBelow(desiredDoughTemperature.value - 2.0f)
-               )
+            if(box.isBelow(desiredDoughTemperature.value - 2.0f))
             {
-                transitionTo(HOLD_ON);
-            }
-            else if (dough.isBelow(desiredDoughTemperature.value - 0.3f))
-            {
-                // in case the box has a higher temperature than the dough we use the rest of the heat before boosting
-                transitionTo(BOOST_OFF);
+                if(dough.isBelow(desiredDoughTemperature.value - 0.3f)){
+                    transitionTo(BOOST_OFF);
+                }else if(dough.isBelow(desiredDoughTemperature.value)){
+                    transitionTo(HOLD_ON);
+                }
             }
             break;
         case BOOST_ON:
